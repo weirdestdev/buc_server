@@ -37,7 +37,7 @@ const authMiddleware = require('../middleware/AuthMiddleware'); // Если тр
  *       500:
  *         description: Внутренняя ошибка сервера
  */
-router.post('/renttime', authMiddleware, rentalsController.addRentTime);
+router.post('/renttime', rentalsController.addRentTime);
 
 /**
  * @swagger
@@ -111,7 +111,7 @@ router.get('/renttime/:id', rentalsController.getRentTime);
  *       500:
  *         description: Внутренняя ошибка сервера
  */
-router.put('/renttime/:id', authMiddleware, rentalsController.updateRentTime);
+router.put('/renttime/:id', rentalsController.updateRentTime);
 
 /**
  * @swagger
@@ -134,6 +134,6 @@ router.put('/renttime/:id', authMiddleware, rentalsController.updateRentTime);
  *       500:
  *         description: Внутренняя ошибка сервера
  */
-router.delete('/renttime/:id', authMiddleware, rentalsController.deleteRentTime);
+router.delete('/renttime/:id', rentalsController.deleteRentTime);
 
 module.exports = router;
