@@ -1,4 +1,4 @@
-const { Rentals, RentalsImages, RentTime, Categories } = require('../models');
+const { Rentals, RentalsImages, RentTime, Categories } = require('../models/models');
 const path = require('path');
 
 // *************************** RentTime методы *************************** //
