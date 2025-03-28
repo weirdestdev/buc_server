@@ -14,6 +14,10 @@ const swaggerDefinition = {
       url: 'http://localhost:3000/api', // Укажите реальный порт
       description: 'Локальный сервер',
     },
+    {
+      url: 'http://161.97.121.171:3000/api', // Укажите реальный порт
+      description: 'Рабочий сервер',
+    },
   ],
   apis: ['./routers/*.js']
 };
