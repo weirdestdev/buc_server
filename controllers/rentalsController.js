@@ -1,88 +1,237 @@
-// controllers/rentalsController.js
-const { RentTime } = require('../models/models');
+const { Rentals, RentalsImages, RentTime, Categories } = require('../models');
+const path = require('path');
 
-class RentalsController {
-  // Добавление нового времени аренды
-  async addRentTime(req, res) {
-    try {
-      const { name } = req.body;
-      if (!name) {
-        return res.status(400).json({ message: "Name is required" });
-      }
-      const rentTime = await RentTime.create({ name });
-      return res.status(201).json(rentTime);
-    } catch (error) {
-      console.error("Error creating RentTime:", error);
-      return res.status(500).json({ message: "Internal server error" });
-    }
+// *************************** RentTime методы *************************** //
+
+const addRentTime = async (req, res) => {
+  try {
+    const { name } = req.body;
+    const rentTime = await RentTime.create({ name });
+    res.status(201).json(rentTime);
+  } catch (error) {
+    res.status(500).json({ message: 'Ошибка при добавлении времени аренды', error });
   }
+};
 
-  // Получение всех времен аренды
-  async getAllRentTimes(req, res) {
-    try {
-      const rentTimes = await RentTime.findAll();
-      return res.json(rentTimes);
-    } catch (error) {
-      console.error("Error fetching RentTimes:", error);
-      return res.status(500).json({ message: "Internal server error" });
-    }
+const getAllRentTimes = async (req, res) => {
+  try {
+    const rentTimes = await RentTime.findAll();
+    res.status(200).json(rentTimes);
+  } catch (error) {
+    res.status(500).json({ message: 'Ошибка при получении времен аренды', error });
   }
+};
 
-  // Получение конкретного времени аренды по ID
-  async getRentTime(req, res) {
-    try {
-      const { id } = req.params;
-      const rentTime = await RentTime.findByPk(id);
-      if (!rentTime) {
-        return res.status(404).json({ message: "Rent time not found" });
-      }
-      return res.json(rentTime);
-    } catch (error) {
-      console.error("Error fetching RentTime:", error);
-      return res.status(500).json({ message: "Internal server error" });
+const getRentTime = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const rentTime = await RentTime.findByPk(id);
+    if (!rentTime) {
+      return res.status(404).json({ message: 'Время аренды не найдено' });
     }
+    res.status(200).json(rentTime);
+  } catch (error) {
+    res.status(500).json({ message: 'Ошибка при получении времени аренды', error });
   }
+};
 
-  // Обновление времени аренды по ID
-  async updateRentTime(req, res) {
-    try {
-      const { id } = req.params;
-      const { name } = req.body;
-      if (!name) {
-        return res.status(400).json({ message: "Name is required" });
-      }
-
-      const rentTime = await RentTime.findByPk(id);
-      if (!rentTime) {
-        return res.status(404).json({ message: "Rent time not found" });
-      }
-
-      rentTime.name = name;
-      await rentTime.save();
-
-      return res.json(rentTime);
-    } catch (error) {
-      console.error("Error updating RentTime:", error);
-      return res.status(500).json({ message: "Internal server error" });
+const updateRentTime = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name } = req.body;
+    const rentTime = await RentTime.findByPk(id);
+    if (!rentTime) {
+      return res.status(404).json({ message: 'Время аренды не найдено' });
     }
+    rentTime.name = name;
+    await rentTime.save();
+    res.status(200).json(rentTime);
+  } catch (error) {
+    res.status(500).json({ message: 'Ошибка при обновлении времени аренды', error });
   }
+};
 
-  // Удаление времени аренды по ID
-  async deleteRentTime(req, res) {
-    try {
-      const { id } = req.params;
-      const rentTime = await RentTime.findByPk(id);
-      if (!rentTime) {
-        return res.status(404).json({ message: "Rent time not found" });
-      }
-
-      await rentTime.destroy();
-      return res.json({ message: "Rent time deleted successfully" });
-    } catch (error) {
-      console.error("Error deleting RentTime:", error);
-      return res.status(500).json({ message: "Internal server error" });
+const deleteRentTime = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const rentTime = await RentTime.findByPk(id);
+    if (!rentTime) {
+      return res.status(404).json({ message: 'Время аренды не найдено' });
     }
+    await rentTime.destroy();
+    res.status(200).json({ message: 'Время аренды успешно удалено' });
+  } catch (error) {
+    res.status(500).json({ message: 'Ошибка при удалении времени аренды', error });
   }
-}
+};
 
-module.exports = new RentalsController();
+// *************************** Rentals методы *************************** //
+
+/**
+ * Создание нового объявления.
+ * Ожидается, что в теле запроса придут поля:
+ * name, description, address, price, unit_of_numeration, status, featured,
+ * categoryId, rentTimeId и (опционально) images (массив URL-ов).
+ */
+const createRental = async (req, res) => {
+  try {
+    const { name, description, address, price, unit_of_numeration, status, featured, categoryId, rentTimeId } = req.body;
+    
+    // Создаем основное объявление
+    const rental = await Rentals.create({
+      name,
+      description,
+      address,
+      price,
+      unit_of_numeration,
+      status,
+      featured,
+      categoryId,
+      rentTimeId
+    });
+    
+    // Если файлы были загружены, формируем URL для каждого файла
+    if (req.files && req.files.length > 0) {
+      const rentalImages = req.files.map(file => {
+        // Формирование URL на основе хоста и пути к файлу
+        const imageUrl = `${req.protocol}://${req.get('host')}/static/${file.filename}`;
+        return { rentalId: rental.id, image: imageUrl };
+      });
+      await RentalsImages.bulkCreate(rentalImages);
+    }
+    res.status(201).json(rental);
+  } catch (error) {
+    res.status(500).json({ message: 'Ошибка при создании объявления', error });
+  }
+};
+
+/**
+ * Обновление объявления по ID.
+ * При обновлении можно передавать новые данные, а также новый массив изображений.
+ * Если изображения переданы, старые удаляются.
+ */
+const updateRental = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, description, address, price, unit_of_numeration, status, featured, categoryId, rentTimeId } = req.body;
+    const rental = await Rentals.findByPk(id);
+    if (!rental) {
+      return res.status(404).json({ message: 'Объявление не найдено' });
+    }
+    // Обновляем поля объявления
+    rental.name = name || rental.name;
+    rental.description = description || rental.description;
+    rental.address = address || rental.address;
+    rental.price = price || rental.price;
+    rental.unit_of_numeration = unit_of_numeration || rental.unit_of_numeration;
+    rental.status = status || rental.status;
+    rental.featured = featured !== undefined ? featured : rental.featured;
+    rental.categoryId = categoryId || rental.categoryId;
+    rental.rentTimeId = rentTimeId || rental.rentTimeId;
+    await rental.save();
+
+    // Если переданы новые файлы, удаляем старые записи изображений и добавляем новые
+    if (req.files) {
+      await RentalsImages.destroy({ where: { rentalId: id } });
+      const rentalImages = req.files.map(file => {
+        const imageUrl = `${req.protocol}://${req.get('host')}/static/${file.filename}`;
+        return { rentalId: rental.id, image: imageUrl };
+      });
+      await RentalsImages.bulkCreate(rentalImages);
+    }
+    res.status(200).json(rental);
+  } catch (error) {
+    res.status(500).json({ message: 'Ошибка при обновлении объявления', error });
+  }
+};
+
+
+/**
+ * Удаление объявления по ID.
+ */
+const deleteRental = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const rental = await Rentals.findByPk(id);
+    if (!rental) {
+      return res.status(404).json({ message: 'Объявление не найдено' });
+    }
+    await rental.destroy();
+    res.status(200).json({ message: 'Объявление успешно удалено' });
+  } catch (error) {
+    res.status(500).json({ message: 'Ошибка при удалении объявления', error });
+  }
+};
+
+/**
+ * Получение всех объявлений с включенными изображениями, временем аренды и категорией.
+ */
+const getAllRentals = async (req, res) => {
+  try {
+    const rentals = await Rentals.findAll({
+      include: [
+        { model: RentalsImages },
+        { model: RentTime },
+        { model: Categories }
+      ]
+    });
+    res.status(200).json(rentals);
+  } catch (error) {
+    res.status(500).json({ message: 'Ошибка при получении объявлений', error });
+  }
+};
+
+/**
+ * Получение только избранных объявлений (featured = true).
+ */
+const getFeaturedRentals = async (req, res) => {
+  try {
+    const rentals = await Rentals.findAll({
+      where: { featured: true },
+      include: [
+        { model: RentalsImages },
+        { model: RentTime },
+        { model: Categories }
+      ]
+    });
+    res.status(200).json(rentals);
+  } catch (error) {
+    res.status(500).json({ message: 'Ошибка при получении избранных объявлений', error });
+  }
+};
+
+/**
+ * Получение объявлений по ID категории.
+ */
+const getRentalsByCategory = async (req, res) => {
+  try {
+    const { categoryId } = req.params;
+    const rentals = await Rentals.findAll({
+      where: { categoryId },
+      include: [
+        { model: RentalsImages },
+        { model: RentTime },
+        { model: Categories }
+      ]
+    });
+    res.status(200).json(rentals);
+  } catch (error) {
+    res.status(500).json({ message: 'Ошибка при получении объявлений по категории', error });
+  }
+};
+
+module.exports = {
+  // RentTime методы
+  addRentTime,
+  getAllRentTimes,
+  getRentTime,
+  updateRentTime,
+  deleteRentTime,
+  // Rentals методы
+  createRental,
+  updateRental,
+  deleteRental,
+  getAllRentals,
+  getFeaturedRentals,
+  getRentalsByCategory
+};
