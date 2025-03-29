@@ -73,6 +73,8 @@ const deleteRentTime = async (req, res) => {
  * name, description, address, price, unit_of_numeration, status, featured,
  * categoryId, rentTimeId, а также (опционально) customData для кастомных полей,
  * и файлы (images).
+ *
+ * Обратите внимание: теперь status должен быть одним из: "our portfolio", "leisure", "rentals".
  */
 const createRental = async (req, res) => {
   try {
@@ -85,6 +87,7 @@ const createRental = async (req, res) => {
       address,
       price,
       unit_of_numeration,
+      // Если статус не передан, будет использовано значение по умолчанию ("our portfolio")
       status,
       featured,
       categoryId,
@@ -141,7 +144,7 @@ const updateRental = async (req, res) => {
       return res.status(404).json({ message: 'Объявление не найдено' });
     }
     
-    // Обновляем поля объявления
+    // Обновляем поля объявления (статус теперь должен быть одним из трех вариантов)
     rental.name = name || rental.name;
     rental.description = description || rental.description;
     rental.address = address || rental.address;

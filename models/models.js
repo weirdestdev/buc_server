@@ -64,6 +64,7 @@ const RentTime = sequelize.define('rent_time', {
     name: { type: DataTypes.STRING, allowNull: false }
 });
 
+// Изменили поле status на 3 категории: our portfolio, leisure, rentals
 const Rentals = sequelize.define('rentals', {
     id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
     name: { type: DataTypes.STRING, allowNull: false },
@@ -72,9 +73,9 @@ const Rentals = sequelize.define('rentals', {
     price: { type: DataTypes.FLOAT, allowNull: false },
     unit_of_numeration: { type: DataTypes.STRING, allowNull: false },
     status: {
-        type: DataTypes.ENUM('pending', 'approved', 'blocked'),
+        type: DataTypes.ENUM('our portfolio', 'leisure', 'rentals'),
         allowNull: false,
-        defaultValue: 'pending',
+        defaultValue: 'our portfolio',
     },
     featured: {
         type: DataTypes.BOOLEAN,

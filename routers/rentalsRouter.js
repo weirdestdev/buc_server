@@ -252,8 +252,8 @@ router.get('/category/:categoryId', rentalsController.getRentalsByCategory);
  *                 example: "€"
  *               status:
  *                 type: string
- *                 enum: [pending, approved, blocked]
- *                 example: "approved"
+ *                 enum: ["our portfolio", "leisure", "rentals"]
+ *                 example: "our portfolio"
  *               featured:
  *                 type: boolean
  *                 example: false
@@ -346,8 +346,8 @@ router.delete('/:id', rentalsController.deleteRental);
  *                 example: "€"
  *               status:
  *                 type: string
- *                 enum: [pending, approved, blocked]
- *                 example: "pending"
+ *                 enum: ["our portfolio", "leisure", "rentals"]
+ *                 example: "leisure"
  *               featured:
  *                 type: boolean
  *                 example: true
