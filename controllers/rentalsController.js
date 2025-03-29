@@ -111,7 +111,6 @@ const createRental = async (req, res) => {
         }
       }
       
-      // customData ожидается как массив объектов: [{ categoriesDataId, value }, ...]
       if (Array.isArray(customData)) {
         const customDataRecords = customData.map(item => ({
           rentalId: rental.id,
@@ -130,8 +129,8 @@ const createRental = async (req, res) => {
 
 /**
  * Обновление объявления по ID.
- * Можно передавать новые данные, новый массив изображений и новые значения кастомных полей.
- * При наличии кастомных данных старые записи удаляются и заменяются новыми.
+ * При обновлении можно передавать новые данные, новый массив изображений и новые значения кастомных полей.
+ * Если кастомные данные переданы, старые записи удаляются и заменяются новыми.
  */
 const updateRental = async (req, res) => {
   try {
@@ -142,7 +141,7 @@ const updateRental = async (req, res) => {
       return res.status(404).json({ message: 'Объявление не найдено' });
     }
     
-    // Обновляем основные поля объявления
+    // Обновляем поля объявления
     rental.name = name || rental.name;
     rental.description = description || rental.description;
     rental.address = address || rental.address;
@@ -165,7 +164,6 @@ const updateRental = async (req, res) => {
     }
     
     // Обработка кастомных данных:
-    // Если переданы кастомные данные, удаляем старые записи и создаем новые.
     if (req.body.customData) {
       let customData = req.body.customData;
       if (typeof customData === 'string') {
@@ -213,7 +211,7 @@ const deleteRental = async (req, res) => {
 };
 
 /**
- * Получение всех объявлений с включенными изображениями, временем аренды и категорией.
+ * Получение всех объявлений с включенными изображениями, временем аренды, категорией и кастомными полями.
  */
 const getAllRentals = async (req, res) => {
   try {
@@ -221,7 +219,8 @@ const getAllRentals = async (req, res) => {
       include: [
         { model: RentalsImages },
         { model: RentTime },
-        { model: Categories }
+        { model: Categories },
+        { model: RentalCustomData }
       ]
     });
     res.status(200).json(rentals);
@@ -231,7 +230,7 @@ const getAllRentals = async (req, res) => {
 };
 
 /**
- * Получение только избранных объявлений (featured = true).
+ * Получение только избранных объявлений (featured = true) с включенными данными.
  */
 const getFeaturedRentals = async (req, res) => {
   try {
@@ -240,7 +239,8 @@ const getFeaturedRentals = async (req, res) => {
       include: [
         { model: RentalsImages },
         { model: RentTime },
-        { model: Categories }
+        { model: Categories },
+        { model: RentalCustomData }
       ]
     });
     res.status(200).json(rentals);
@@ -250,7 +250,7 @@ const getFeaturedRentals = async (req, res) => {
 };
 
 /**
- * Получение объявлений по ID категории.
+ * Получение объявлений по ID категории с включенными данными.
  */
 const getRentalsByCategory = async (req, res) => {
   try {
@@ -260,7 +260,8 @@ const getRentalsByCategory = async (req, res) => {
       include: [
         { model: RentalsImages },
         { model: RentTime },
-        { model: Categories }
+        { model: Categories },
+        { model: RentalCustomData }
       ]
     });
     res.status(200).json(rentals);
