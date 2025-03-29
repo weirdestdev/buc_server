@@ -167,73 +167,6 @@ router.delete('/renttime/:id', rentalsController.deleteRentTime);
 /**
  * @swagger
  * /rentals:
- *   post:
- *     summary: Создание нового объявления
- *     tags: [Rentals]
- *     security:
- *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         multipart/form-data:
- *           schema:
- *             type: object
- *             required:
- *               - name
- *               - price
- *               - unit_of_numeration
- *               - categoryId
- *               - rentTimeId
- *             properties:
- *               name:
- *                 type: string
- *                 example: "Luxury Villa"
- *               description:
- *                 type: string
- *                 example: "Spacious villa with sea view"
- *               address:
- *                 type: string
- *                 example: "123 Beach Avenue"
- *               price:
- *                 type: number
- *                 example: 1200000
- *               unit_of_numeration:
- *                 type: string
- *                 example: "€"
- *               status:
- *                 type: string
- *                 enum: [pending, approved, blocked]
- *                 example: "pending"
- *               featured:
- *                 type: boolean
- *                 example: true
- *               categoryId:
- *                 type: integer
- *                 example: 2
- *               rentTimeId:
- *                 type: integer
- *                 example: 1
- *               customData:
- *                 type: string
- *                 description: JSON-строка с массивом объектов кастомных полей. Пример: [{"categoriesDataId":1,"value":"Value 1"}]
- *               images:
- *                 type: array
- *                 items:
- *                   type: string
- *                   format: binary
- *     responses:
- *       201:
- *         description: Объявление успешно создано
- *       400:
- *         description: Ошибка валидации
- *       500:
- *         description: Внутренняя ошибка сервера
- */
-router.post('/', upload.array('images'), rentalsController.createRental);
-
-/**
- * @swagger
- * /rentals:
  *   get:
  *     summary: Получение всех объявлений аренды с кастомными полями
  *     tags: [Rentals]
@@ -374,5 +307,72 @@ router.put('/:id', upload.array('images'), rentalsController.updateRental);
  *         description: Внутренняя ошибка сервера
  */
 router.delete('/:id', rentalsController.deleteRental);
+
+/**
+ * @swagger
+ * /rentals:
+ *   post:
+ *     summary: Создание нового объявления
+ *     tags: [Rentals]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *               - price
+ *               - unit_of_numeration
+ *               - categoryId
+ *               - rentTimeId
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 example: "Luxury Villa"
+ *               description:
+ *                 type: string
+ *                 example: "Spacious villa with sea view"
+ *               address:
+ *                 type: string
+ *                 example: "123 Beach Avenue"
+ *               price:
+ *                 type: number
+ *                 example: 1200000
+ *               unit_of_numeration:
+ *                 type: string
+ *                 example: "€"
+ *               status:
+ *                 type: string
+ *                 enum: [pending, approved, blocked]
+ *                 example: "pending"
+ *               featured:
+ *                 type: boolean
+ *                 example: true
+ *               categoryId:
+ *                 type: integer
+ *                 example: 2
+ *               rentTimeId:
+ *                 type: integer
+ *                 example: 1
+ *               customData:
+ *                 type: string
+ *                 description: JSON-строка с массивом объектов кастомных полей. Пример: [{"categoriesDataId":1,"value":"Value 1"}]
+ *               images:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                   format: binary
+ *     responses:
+ *       201:
+ *         description: Объявление успешно создано
+ *       400:
+ *         description: Ошибка валидации
+ *       500:
+ *         description: Внутренняя ошибка сервера
+ */
+router.post('/', upload.array('images'), rentalsController.createRental);
 
 module.exports = router;
