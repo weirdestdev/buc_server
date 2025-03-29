@@ -1,4 +1,4 @@
-const { Rentals, RentalsImages, RentTime, Categories } = require('../models/models');
+const { Rentals, RentalsImages, RentTime, Categories, RentalCustomData } = require('../models/models');
 const path = require('path');
 
 // *************************** RentTime методы *************************** //
@@ -71,7 +71,8 @@ const deleteRentTime = async (req, res) => {
  * Создание нового объявления.
  * Ожидается, что в теле запроса придут поля:
  * name, description, address, price, unit_of_numeration, status, featured,
- * categoryId, rentTimeId и (опционально) images (массив URL-ов).
+ * categoryId, rentTimeId, а также (опционально) customData для кастомных полей,
+ * и файлы (images).
  */
 const createRental = async (req, res) => {
   try {
@@ -93,12 +94,34 @@ const createRental = async (req, res) => {
     // Если файлы были загружены, формируем URL для каждого файла
     if (req.files && req.files.length > 0) {
       const rentalImages = req.files.map(file => {
-        // Формирование URL на основе хоста и пути к файлу
         const imageUrl = `${req.protocol}://${req.get('host')}/static/${file.filename}`;
         return { rentalId: rental.id, image: imageUrl };
       });
       await RentalsImages.bulkCreate(rentalImages);
     }
+    
+    // Обработка кастомных полей, если они переданы
+    if (req.body.customData) {
+      let customData = req.body.customData;
+      if (typeof customData === 'string') {
+        try {
+          customData = JSON.parse(customData);
+        } catch (parseError) {
+          return res.status(400).json({ message: 'Неверный формат customData', error: parseError });
+        }
+      }
+      
+      // customData ожидается как массив объектов: [{ categoriesDataId, value }, ...]
+      if (Array.isArray(customData)) {
+        const customDataRecords = customData.map(item => ({
+          rentalId: rental.id,
+          categoriesDataId: item.categoriesDataId,
+          value: item.value
+        }));
+        await RentalCustomData.bulkCreate(customDataRecords);
+      }
+    }
+    
     res.status(201).json(rental);
   } catch (error) {
     res.status(500).json({ message: 'Ошибка при создании объявления', error });
@@ -107,8 +130,8 @@ const createRental = async (req, res) => {
 
 /**
  * Обновление объявления по ID.
- * При обновлении можно передавать новые данные, а также новый массив изображений.
- * Если изображения переданы, старые удаляются.
+ * Можно передавать новые данные, новый массив изображений и новые значения кастомных полей.
+ * При наличии кастомных данных старые записи удаляются и заменяются новыми.
  */
 const updateRental = async (req, res) => {
   try {
@@ -118,7 +141,8 @@ const updateRental = async (req, res) => {
     if (!rental) {
       return res.status(404).json({ message: 'Объявление не найдено' });
     }
-    // Обновляем поля объявления
+    
+    // Обновляем основные поля объявления
     rental.name = name || rental.name;
     rental.description = description || rental.description;
     rental.address = address || rental.address;
@@ -129,8 +153,8 @@ const updateRental = async (req, res) => {
     rental.categoryId = categoryId || rental.categoryId;
     rental.rentTimeId = rentTimeId || rental.rentTimeId;
     await rental.save();
-
-    // Если переданы новые файлы, удаляем старые записи изображений и добавляем новые
+    
+    // Если переданы новые файлы, удаляем старые и добавляем новые
     if (req.files) {
       await RentalsImages.destroy({ where: { rentalId: id } });
       const rentalImages = req.files.map(file => {
@@ -139,12 +163,37 @@ const updateRental = async (req, res) => {
       });
       await RentalsImages.bulkCreate(rentalImages);
     }
+    
+    // Обработка кастомных данных:
+    // Если переданы кастомные данные, удаляем старые записи и создаем новые.
+    if (req.body.customData) {
+      let customData = req.body.customData;
+      if (typeof customData === 'string') {
+        try {
+          customData = JSON.parse(customData);
+        } catch (parseError) {
+          return res.status(400).json({ message: 'Неверный формат customData', error: parseError });
+        }
+      }
+      
+      // Удаляем старые кастомные данные для этого объявления
+      await RentalCustomData.destroy({ where: { rentalId: id } });
+      
+      if (Array.isArray(customData)) {
+        const customDataRecords = customData.map(item => ({
+          rentalId: rental.id,
+          categoriesDataId: item.categoriesDataId,
+          value: item.value
+        }));
+        await RentalCustomData.bulkCreate(customDataRecords);
+      }
+    }
+    
     res.status(200).json(rental);
   } catch (error) {
     res.status(500).json({ message: 'Ошибка при обновлении объявления', error });
   }
 };
-
 
 /**
  * Удаление объявления по ID.

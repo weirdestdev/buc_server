@@ -16,7 +16,7 @@ const User = sequelize.define('user', {
             'curious'
         ),
         allowNull: false,
-        defaultValue: 'buy', // например, если хотите дефолт
+        defaultValue: 'buy',
     },
     status: {
         type: DataTypes.ENUM('pending', 'approved', 'blocked'),
@@ -41,7 +41,7 @@ const CategoriesData = sequelize.define('categories_data', {
     min_size: { type: DataTypes.INTEGER, allowNull: false },
     max_size: { type: DataTypes.INTEGER, allowNull: false },
     icon: { type: DataTypes.STRING, allowNull: true },
-})
+});
 
 const Categories = sequelize.define('categories', {
     id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
@@ -52,17 +52,17 @@ const Categories = sequelize.define('categories', {
         allowNull: false,
         defaultValue: false,
     }
-})
+});
 
 const RentalsImages = sequelize.define('rentals_images', {
     id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
     image: { type: DataTypes.STRING, allowNull: false }
-})
+});
 
 const RentTime = sequelize.define('rent_time', {
     id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
     name: { type: DataTypes.STRING, allowNull: false }
-})
+});
 
 const Rentals = sequelize.define('rentals', {
     id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
@@ -81,8 +81,15 @@ const Rentals = sequelize.define('rentals', {
         allowNull: false,
         defaultValue: false,
     }
-})
+});
 
+// Новая модель для хранения значений кастомных полей, введённых для каждого объявления
+const RentalCustomData = sequelize.define('rental_custom_data', {
+    id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+    value: { type: DataTypes.STRING, allowNull: true },
+});
+
+// Связи между моделями
 User.hasMany(Rentals, { foreignKey: 'userId', onDelete: 'CASCADE' });
 Rentals.belongsTo(User, { foreignKey: 'userId' });
 
@@ -108,6 +115,12 @@ RentalsImages.belongsTo(Rentals, { foreignKey: 'rentalId' });
 Rentals.belongsTo(RentTime, { foreignKey: 'rentTimeId', onDelete: 'CASCADE' });
 RentTime.hasMany(Rentals, { foreignKey: 'rentTimeId' });
 
+Rentals.hasMany(RentalCustomData, { foreignKey: 'rentalId', onDelete: 'CASCADE' });
+RentalCustomData.belongsTo(Rentals, { foreignKey: 'rentalId' });
+
+CategoriesData.hasMany(RentalCustomData, { foreignKey: 'categoriesDataId', onDelete: 'CASCADE' });
+RentalCustomData.belongsTo(CategoriesData, { foreignKey: 'categoriesDataId' });
+
 module.exports = {
     User,
     Rentals,
@@ -115,4 +128,5 @@ module.exports = {
     CategoriesData,
     RentalsImages,
     RentTime,
-}
+    RentalCustomData,
+};
