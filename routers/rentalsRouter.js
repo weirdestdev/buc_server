@@ -213,6 +213,9 @@ router.delete('/renttime/:id', rentalsController.deleteRentTime);
  *               rentTimeId:
  *                 type: integer
  *                 example: 1
+ *               customData:
+ *                 type: string
+ *                 description: JSON-строка с массивом объектов кастомных полей. Пример: [{"categoriesDataId":1,"value":"Value 1"}]
  *               images:
  *                 type: array
  *                 items:
@@ -226,14 +229,13 @@ router.delete('/renttime/:id', rentalsController.deleteRentTime);
  *       500:
  *         description: Внутренняя ошибка сервера
  */
-// Для создания объявления используем upload.array('images') – ожидаем файлы с ключом "images"
 router.post('/', upload.array('images'), rentalsController.createRental);
 
 /**
  * @swagger
  * /rentals:
  *   get:
- *     summary: Получение всех объявлений аренды
+ *     summary: Получение всех объявлений аренды с кастомными полями
  *     tags: [Rentals]
  *     responses:
  *       200:
@@ -328,6 +330,9 @@ router.get('/category/:categoryId', rentalsController.getRentalsByCategory);
  *               rentTimeId:
  *                 type: integer
  *                 example: 2
+ *               customData:
+ *                 type: string
+ *                 description: JSON-строка с массивом объектов кастомных полей.
  *               images:
  *                 type: array
  *                 items:
@@ -343,7 +348,6 @@ router.get('/category/:categoryId', rentalsController.getRentalsByCategory);
  *       500:
  *         description: Внутренняя ошибка сервера
  */
-// Для обновления объявления используем upload.array('images')
 router.put('/:id', upload.array('images'), rentalsController.updateRental);
 
 /**
