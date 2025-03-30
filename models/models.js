@@ -71,7 +71,7 @@ const Rentals = sequelize.define('rentals', {
     description: { type: DataTypes.STRING, allowNull: true },
     address: { type: DataTypes.STRING, allowNull: true },
     price: { type: DataTypes.FLOAT, allowNull: false },
-    unit_of_numeration: { type: DataTypes.STRING, allowNull: false },
+    unit_of_numeration: { type: DataTypes.STRING, allowNull: true },
     status: {
         type: DataTypes.ENUM('our portfolio', 'leisure', 'rentals'),
         allowNull: false,
