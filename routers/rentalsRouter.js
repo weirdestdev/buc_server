@@ -359,7 +359,8 @@ router.delete('/:id', rentalsController.deleteRental);
  *                 example: 1
  *               customData:
  *                 type: string
- *                 description: JSON-строка с массивом объектов кастомных полей. Пример: [{"categoriesDataId":1,"value":"Value 1"}]
+ *                 description: "JSON-строка с массивом объектов кастомных полей. Пример: [{\"categoriesDataId\":1,\"value\":\"Value 1\"}]"
+ *
  *               images:
  *                 type: array
  *                 items:

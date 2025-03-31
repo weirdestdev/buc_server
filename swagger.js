@@ -15,7 +15,7 @@ const swaggerDefinition = {
       description: 'Локальный сервер',
     },
     {
-      url: 'http://161.97.121.171:3000/api', // Укажите реальный порт
+      url: 'https://api.businessunit.club/api', // Укажите реальный порт
       description: 'Рабочий сервер',
     },
   ],
