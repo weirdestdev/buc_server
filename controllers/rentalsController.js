@@ -1,4 +1,4 @@
-const { Rentals, RentalsImages, RentTime, Categories, RentalCustomData } = require('../models/models');
+const { Rentals, RentalsImages, RentTime, Categories, RentalCustomData, CategoriesData } = require('../models/models');
 const path = require('path');
 
 // *************************** RentTime методы *************************** //
@@ -223,7 +223,12 @@ const getAllRentals = async (req, res) => {
         { model: RentalsImages },
         { model: RentTime },
         { model: Categories },
-        { model: RentalCustomData }
+        {
+          model: RentalCustomData,
+          include: [
+            { model: CategoriesData } // включаем модель CategoriesData, чтобы получить её поля, в том числе name
+          ]
+        }
       ]
     });
     res.status(200).json(rentals);
@@ -238,12 +243,16 @@ const getAllRentals = async (req, res) => {
 const getFeaturedRentals = async (req, res) => {
   try {
     const rentals = await Rentals.findAll({
-      where: { featured: true },
       include: [
         { model: RentalsImages },
         { model: RentTime },
         { model: Categories },
-        { model: RentalCustomData }
+        {
+          model: RentalCustomData,
+          include: [
+            { model: CategoriesData } // включаем модель CategoriesData, чтобы получить её поля, в том числе name
+          ]
+        }
       ]
     });
     res.status(200).json(rentals);
@@ -259,12 +268,16 @@ const getRentalsByCategory = async (req, res) => {
   try {
     const { categoryId } = req.params;
     const rentals = await Rentals.findAll({
-      where: { categoryId },
       include: [
         { model: RentalsImages },
         { model: RentTime },
         { model: Categories },
-        { model: RentalCustomData }
+        {
+          model: RentalCustomData,
+          include: [
+            { model: CategoriesData } // включаем модель CategoriesData, чтобы получить её поля, в том числе name
+          ]
+        }
       ]
     });
     res.status(200).json(rentals);
