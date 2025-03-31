@@ -87,7 +87,6 @@ const createRental = async (req, res) => {
       address,
       price,
       unit_of_numeration,
-      // Если статус не передан, будет использовано значение по умолчанию ("our portfolio")
       status,
       featured,
       categoryId,
@@ -144,7 +143,6 @@ const updateRental = async (req, res) => {
       return res.status(404).json({ message: 'Объявление не найдено' });
     }
     
-    // Обновляем поля объявления (статус теперь должен быть одним из трех вариантов)
     rental.name = name || rental.name;
     rental.description = description || rental.description;
     rental.address = address || rental.address;
@@ -225,9 +223,7 @@ const getAllRentals = async (req, res) => {
         { model: Categories },
         {
           model: RentalCustomData,
-          include: [
-            { model: CategoriesData } // включаем модель CategoriesData, чтобы получить её поля, в том числе name
-          ]
+          include: [{ model: CategoriesData }]
         }
       ]
     });
@@ -243,15 +239,14 @@ const getAllRentals = async (req, res) => {
 const getFeaturedRentals = async (req, res) => {
   try {
     const rentals = await Rentals.findAll({
+      where: { featured: true },
       include: [
         { model: RentalsImages },
         { model: RentTime },
         { model: Categories },
         {
           model: RentalCustomData,
-          include: [
-            { model: CategoriesData } // включаем модель CategoriesData, чтобы получить её поля, в том числе name
-          ]
+          include: [{ model: CategoriesData }]
         }
       ]
     });
@@ -268,21 +263,44 @@ const getRentalsByCategory = async (req, res) => {
   try {
     const { categoryId } = req.params;
     const rentals = await Rentals.findAll({
+      where: { categoryId },
       include: [
         { model: RentalsImages },
         { model: RentTime },
         { model: Categories },
         {
           model: RentalCustomData,
-          include: [
-            { model: CategoriesData } // включаем модель CategoriesData, чтобы получить её поля, в том числе name
-          ]
+          include: [{ model: CategoriesData }]
         }
       ]
     });
     res.status(200).json(rentals);
   } catch (error) {
     res.status(500).json({ message: 'Ошибка при получении объявлений по категории', error });
+  }
+};
+
+/**
+ * Получение объявлений по статусу с включенными данными.
+ */
+const getRentalsByStatus = async (req, res) => {
+  try {
+    const { status } = req.params;
+    const rentals = await Rentals.findAll({
+      where: { status },
+      include: [
+        { model: RentalsImages },
+        { model: RentTime },
+        { model: Categories },
+        {
+          model: RentalCustomData,
+          include: [{ model: CategoriesData }]
+        }
+      ]
+    });
+    res.status(200).json(rentals);
+  } catch (error) {
+    res.status(500).json({ message: 'Ошибка при получении объявлений по статусу', error });
   }
 };
 
@@ -299,5 +317,6 @@ module.exports = {
   deleteRental,
   getAllRentals,
   getFeaturedRentals,
-  getRentalsByCategory
+  getRentalsByCategory,
+  getRentalsByStatus
 };

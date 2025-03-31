@@ -215,6 +215,28 @@ router.get('/category/:categoryId', rentalsController.getRentalsByCategory);
 
 /**
  * @swagger
+ * /rentals/status/{status}:
+ *   get:
+ *     summary: Получение объявлений по статусу
+ *     tags: [Rentals]
+ *     parameters:
+ *       - in: path
+ *         name: status
+ *         required: true
+ *         schema:
+ *           type: string
+ *           enum: ["our portfolio", "leisure", "rentals"]
+ *         example: "our portfolio"
+ *     responses:
+ *       200:
+ *         description: Список объявлений по статусу
+ *       500:
+ *         description: Внутренняя ошибка сервера
+ */
+router.get('/status/:status', rentalsController.getRentalsByStatus);
+
+/**
+ * @swagger
  * /rentals/{id}:
  *   put:
  *     summary: Обновление объявления аренды по ID
@@ -359,7 +381,7 @@ router.delete('/:id', rentalsController.deleteRental);
  *                 example: 1
  *               customData:
  *                 type: string
- *
+ *                 description: JSON-строка с массивом объектов кастомных полей.
  *               images:
  *                 type: array
  *                 items:
