@@ -128,4 +128,18 @@ router.post('/adminLogin', userController.adminLogin);
  */
 router.get('/auth', authMiddleware, userController.auth);
 
+/**
+ * @swagger
+ * /user/auth/admin:
+ *   get:
+ *     summary: Проверка авторизации пользователя админа
+ *     tags: [Пользователь]
+ *     responses:
+ *       200:
+ *         description: Возвращает токен для авторизации
+ *       401:
+ *         description: Пользователь не авторизован
+ */
+router.get('/auth/admin', authMiddleware, userController.adminAuth);
+
 module.exports = router;

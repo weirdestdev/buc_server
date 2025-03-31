@@ -94,6 +94,20 @@ class UserController {
         const token = generateJwt(user.id, user.email, user.fullname, user.phone, user.purpose, user.status, user.role);
         return res.json({ token });
     }
+
+    async adminAuth(req, res, next) {
+        const user = await User.findOne({ where: { email: req.user.email } });
+        if (!user) {
+            return next(ApiError.internal('User not found'));
+        }
+
+        if(user.role !== "admin") {
+            return next(ApiError.internal('Not the admin'));
+        }
+        
+        const token = generateJwt(user.id, user.email, user.fullname, user.phone, user.purpose, user.status, user.role);
+        return res.json({ token });
+    }
 }
 
 module.exports = new UserController();
