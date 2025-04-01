@@ -155,14 +155,16 @@ const updateRental = async (req, res) => {
     await rental.save();
     
     // Если переданы новые файлы, удаляем старые и добавляем новые
-    if (req.files) {
+    if (req.files && req.files.length > 0) {
       await RentalsImages.destroy({ where: { rentalId: id } });
-      const rentalImages = req.files.map(file => {
-        const imageUrl = `${req.protocol}://${req.get('host')}/static/${file.filename}`;
-        return { rentalId: rental.id, image: imageUrl };
-      });
+    
+      const rentalImages = req.files.map(file => ({
+        rentalId: rental.id,
+        image: `${req.protocol}://${req.get('host')}/static/${file.filename}`
+      }));
+    
       await RentalsImages.bulkCreate(rentalImages);
-    }
+    }    
     
     // Обработка кастомных данных:
     if (req.body.customData) {
