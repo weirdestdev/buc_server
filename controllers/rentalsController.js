@@ -78,10 +78,7 @@ const deleteRentTime = async (req, res) => {
  */
 const createRental = async (req, res) => {
   try {
-    const { name, description, address, price, unit_of_numeration, status, featured, categoryId, rentTimeId } = req.body;
-    
-    // Создаем основное объявление
-    const rental = await Rentals.create({
+    const {
       name,
       description,
       address,
@@ -91,9 +88,25 @@ const createRental = async (req, res) => {
       featured,
       categoryId,
       rentTimeId
-    });
+    } = req.body;
     
-    // Если файлы были загружены, формируем URL для каждого файла
+    // Формируем объект данных для создания объявления.
+    // Если rentTimeId не передан или равен "null", устанавливаем его как null.
+    const rentalData = {
+      name,
+      description,
+      address,
+      price,
+      unit_of_numeration,
+      status,
+      featured,
+      categoryId,
+      rentTimeId: rentTimeId && rentTimeId !== "null" ? rentTimeId : null
+    };
+    
+    const rental = await Rentals.create(rentalData);
+    
+    // Обработка изображений, кастомных полей и прочего остается без изменений...
     if (req.files && req.files.length > 0) {
       const rentalImages = req.files.map(file => {
         const imageUrl = `${req.protocol}://${req.get('host')}/static/${file.filename}`;
@@ -102,7 +115,6 @@ const createRental = async (req, res) => {
       await RentalsImages.bulkCreate(rentalImages);
     }
     
-    // Обработка кастомных полей, если они переданы
     if (req.body.customData) {
       let customData = req.body.customData;
       if (typeof customData === 'string') {
