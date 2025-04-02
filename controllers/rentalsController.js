@@ -155,14 +155,18 @@ const updateRental = async (req, res) => {
     rental.rentTimeId = rentTimeId || rental.rentTimeId;
     await rental.save();
 
-    // Если переданы новые файлы – обрабатываем их (приоритет – новые файлы)
+    // Если загружены новые файлы – приоритет их обработки
     if (req.files && req.files.length > 0) {
       // Удаляем старые записи и файлы
       const currentImages = await RentalsImages.findAll({ where: { rentalId: id } });
       currentImages.forEach(img => {
-        const filePath = path.join(__dirname, '..', 'static', path.basename(img.image));
-        if (fs.existsSync(filePath)) {
-          fs.unlinkSync(filePath);
+        try {
+          const filePath = path.join(__dirname, '..', 'static', path.basename(img.image));
+          if (fs.existsSync(filePath)) {
+            fs.unlinkSync(filePath);
+          }
+        } catch (err) {
+          console.error('Ошибка при удалении файла', err);
         }
       });
       await RentalsImages.destroy({ where: { rentalId: id } });
@@ -182,16 +186,20 @@ const updateRental = async (req, res) => {
       }
       // Получаем текущие записи изображений
       const currentImages = await RentalsImages.findAll({ where: { rentalId: id } });
-      // Удаляем файлы из папки static
+      // Удаляем файлы из папки static (обрабатываем ошибки)
       currentImages.forEach(img => {
-        const filePath = path.join(__dirname, '..', 'static', path.basename(img.image));
-        if (fs.existsSync(filePath)) {
-          fs.unlinkSync(filePath);
+        try {
+          const filePath = path.join(__dirname, '..', 'static', path.basename(img.image));
+          if (fs.existsSync(filePath)) {
+            fs.unlinkSync(filePath);
+          }
+        } catch (err) {
+          console.error('Ошибка при удалении файла', err);
         }
       });
       // Удаляем все записи изображений для данного объявления
       await RentalsImages.destroy({ where: { rentalId: id } });
-      // Если передан не пустой массив, сохраняем новые записи в том порядке, который передан клиентом
+      // Вставляем новые записи согласно переданному порядку
       if (updatedImages.length > 0) {
         const newImages = updatedImages.map(item => ({
           rentalId: rental.id,
@@ -211,7 +219,6 @@ const updateRental = async (req, res) => {
           return res.status(400).json({ message: 'Неверный формат customData', error: parseError });
         }
       }
-      // Удаляем старые данные и создаем новые
       await RentalCustomData.destroy({ where: { rentalId: id } });
       if (Array.isArray(customData)) {
         const customDataRecords = customData.map(item => ({
@@ -225,9 +232,11 @@ const updateRental = async (req, res) => {
 
     res.status(200).json(rental);
   } catch (error) {
+    console.error('Ошибка при обновлении объявления:', error);
     res.status(500).json({ message: 'Ошибка при обновлении объявления', error });
   }
 };
+
 
 /**
  * Удаление объявления по ID.
