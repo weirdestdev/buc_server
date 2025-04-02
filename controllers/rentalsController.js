@@ -142,7 +142,7 @@ const updateRental = async (req, res) => {
     if (!rental) {
       return res.status(404).json({ message: 'Объявление не найдено' });
     }
-    
+
     rental.name = name || rental.name;
     rental.description = description || rental.description;
     rental.address = address || rental.address;
@@ -153,20 +153,42 @@ const updateRental = async (req, res) => {
     rental.categoryId = categoryId || rental.categoryId;
     rental.rentTimeId = rentTimeId || rental.rentTimeId;
     await rental.save();
-    
-    // Если переданы новые файлы, удаляем старые и добавляем новые
+
+    // Если в теле запроса переданы порядок существующих изображений
+    if (req.body.existingImagesOrder) {
+      const imageOrder = JSON.parse(req.body.existingImagesOrder); // массив id в новом порядке
+      const removedImages = req.body.removedImages ? JSON.parse(req.body.removedImages) : [];
+
+      // Получаем текущие изображения объявления
+      const currentImages = await RentalsImages.findAll({ where: { rentalId: id } });
+      // Фильтруем изображения, исключая те, что были удалены
+      const imagesToKeep = currentImages.filter(img => !removedImages.includes(img.id));
+      // Сортируем изображения по переданному порядку
+      const orderedImages = imageOrder
+        .map(imageId => imagesToKeep.find(img => img.id === imageId))
+        .filter(img => img !== undefined);
+
+      // Удаляем все изображения для объявления
+      await RentalsImages.destroy({ where: { rentalId: id } });
+      // Заново вставляем изображения в новом порядке
+      const newImages = orderedImages.map(img => ({
+        rentalId: id,
+        image: img.image
+      }));
+      await RentalsImages.bulkCreate(newImages);
+    }
+
+    // Если загружены новые файлы, обрабатываем их – удаляем старые изображения и добавляем новые
     if (req.files && req.files.length > 0) {
       await RentalsImages.destroy({ where: { rentalId: id } });
-    
       const rentalImages = req.files.map(file => ({
         rentalId: rental.id,
         image: `${req.protocol}://${req.get('host')}/static/${file.filename}`
       }));
-    
       await RentalsImages.bulkCreate(rentalImages);
-    }    
-    
-    // Обработка кастомных данных:
+    }
+
+    // Обработка кастомных данных
     if (req.body.customData) {
       let customData = req.body.customData;
       if (typeof customData === 'string') {
@@ -176,10 +198,8 @@ const updateRental = async (req, res) => {
           return res.status(400).json({ message: 'Неверный формат customData', error: parseError });
         }
       }
-      
       // Удаляем старые кастомные данные для этого объявления
       await RentalCustomData.destroy({ where: { rentalId: id } });
-      
       if (Array.isArray(customData)) {
         const customDataRecords = customData.map(item => ({
           rentalId: rental.id,
@@ -189,12 +209,13 @@ const updateRental = async (req, res) => {
         await RentalCustomData.bulkCreate(customDataRecords);
       }
     }
-    
+
     res.status(200).json(rental);
   } catch (error) {
     res.status(500).json({ message: 'Ошибка при обновлении объявления', error });
   }
 };
+
 
 /**
  * Удаление объявления по ID.
