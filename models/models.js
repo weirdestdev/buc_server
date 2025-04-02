@@ -68,7 +68,7 @@ const RentTime = sequelize.define('rent_time', {
 const Rentals = sequelize.define('rentals', {
     id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
     name: { type: DataTypes.STRING, allowNull: false },
-    description: { type: DataTypes.STRING, allowNull: true },
+    description: { type: DataTypes.STRING(200), allowNull: true },
     address: { type: DataTypes.STRING, allowNull: true },
     price: { type: DataTypes.FLOAT, allowNull: false },
     unit_of_numeration: { type: DataTypes.STRING, allowNull: true },
