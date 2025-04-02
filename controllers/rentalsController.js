@@ -155,34 +155,7 @@ const updateRental = async (req, res) => {
     rental.rentTimeId = rentTimeId || rental.rentTimeId;
     await rental.save();
 
-    // Если передан новый порядок существующих изображений,
-    // просто очищаем их и вставляем заново в указанном порядке.
-    if (req.body.existingImagesOrder) {
-      // newOrder ожидается как JSON-строка массива id изображений, например: "[3,1,5]"
-      const newOrder = JSON.parse(req.body.existingImagesOrder);
-      // Получаем текущие изображения объявления
-      const currentImages = await RentalsImages.findAll({ where: { rentalId: id } });
-      // Создаем словарь: id -> image url
-      const imageMap = {};
-      currentImages.forEach(img => {
-        imageMap[img.id] = img.image;
-      });
-      // Формируем массив изображений в новом порядке, пропуская несуществующие id
-      const orderedImages = newOrder
-        .map(imageId => imageMap[imageId])
-        .filter(url => url !== undefined)
-        .map(url => ({ rentalId: id, image: url }));
-
-      // Удаляем все существующие изображения
-      await RentalsImages.destroy({ where: { rentalId: id } });
-      // Если в новом порядке есть изображения — добавляем их
-      if (orderedImages.length > 0) {
-        await RentalsImages.bulkCreate(orderedImages);
-      }
-    }
-
-    // Если загружены новые файлы, обрабатываем их отдельно:
-    // удаляем старые изображения и вставляем новые.
+    // Если переданы новые файлы, обрабатываем их (приоритет – новые файлы)
     if (req.files && req.files.length > 0) {
       await RentalsImages.destroy({ where: { rentalId: id } });
       const rentalImages = req.files.map(file => ({
@@ -190,6 +163,25 @@ const updateRental = async (req, res) => {
         image: `${req.protocol}://${req.get('host')}/static/${file.filename}`
       }));
       await RentalsImages.bulkCreate(rentalImages);
+    } else if (req.body.updatedImages) {
+      // Если не загружены новые файлы, обрабатываем порядок существующих изображений
+      // Парсим переданный массив обновлённых изображений, в котором уже отражены удалённые и отсортированные миниатюры
+      let updatedImages;
+      try {
+        updatedImages = JSON.parse(req.body.updatedImages);
+      } catch (parseError) {
+        return res.status(400).json({ message: 'Неверный формат updatedImages', error: parseError });
+      }
+      // Удаляем все существующие записи
+      await RentalsImages.destroy({ where: { rentalId: id } });
+      // Вставляем новые записи согласно обновлённому порядку (если массив не пуст)
+      if (updatedImages.length > 0) {
+        const newImages = updatedImages.map(item => ({
+          rentalId: rental.id,
+          image: item.image
+        }));
+        await RentalsImages.bulkCreate(newImages);
+      }
     }
 
     // Обработка кастомных данных
@@ -202,6 +194,7 @@ const updateRental = async (req, res) => {
           return res.status(400).json({ message: 'Неверный формат customData', error: parseError });
         }
       }
+      // Удаляем старые кастомные данные и вставляем новые
       await RentalCustomData.destroy({ where: { rentalId: id } });
       if (Array.isArray(customData)) {
         const customDataRecords = customData.map(item => ({
@@ -218,7 +211,6 @@ const updateRental = async (req, res) => {
     res.status(500).json({ message: 'Ошибка при обновлении объявления', error });
   }
 };
-
 
 /**
  * Удаление объявления по ID.
