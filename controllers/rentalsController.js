@@ -143,7 +143,7 @@ const updateRental = async (req, res) => {
       return res.status(404).json({ message: 'Объявление не найдено' });
     }
 
-    // Обновление основных полей объявления
+    // Обновляем основные поля объявления
     rental.name = name || rental.name;
     rental.description = description || rental.description;
     rental.address = address || rental.address;
@@ -155,26 +155,43 @@ const updateRental = async (req, res) => {
     rental.rentTimeId = rentTimeId || rental.rentTimeId;
     await rental.save();
 
-    // Если переданы новые файлы, обрабатываем их (приоритет – новые файлы)
+    // Если переданы новые файлы – обрабатываем их (приоритет – новые файлы)
     if (req.files && req.files.length > 0) {
+      // Удаляем старые записи и файлы
+      const currentImages = await RentalsImages.findAll({ where: { rentalId: id } });
+      currentImages.forEach(img => {
+        const filePath = path.join(__dirname, '..', 'static', path.basename(img.image));
+        if (fs.existsSync(filePath)) {
+          fs.unlinkSync(filePath);
+        }
+      });
       await RentalsImages.destroy({ where: { rentalId: id } });
+      // Добавляем новые изображения
       const rentalImages = req.files.map(file => ({
         rentalId: rental.id,
         image: `${req.protocol}://${req.get('host')}/static/${file.filename}`
       }));
       await RentalsImages.bulkCreate(rentalImages);
     } else if (req.body.updatedImages) {
-      // Если не загружены новые файлы, обрабатываем порядок существующих изображений
-      // Парсим переданный массив обновлённых изображений, в котором уже отражены удалённые и отсортированные миниатюры
+      // Обработка обновленного порядка миниатюр
       let updatedImages;
       try {
         updatedImages = JSON.parse(req.body.updatedImages);
       } catch (parseError) {
         return res.status(400).json({ message: 'Неверный формат updatedImages', error: parseError });
       }
-      // Удаляем все существующие записи
+      // Получаем текущие записи изображений
+      const currentImages = await RentalsImages.findAll({ where: { rentalId: id } });
+      // Удаляем файлы из папки static
+      currentImages.forEach(img => {
+        const filePath = path.join(__dirname, '..', 'static', path.basename(img.image));
+        if (fs.existsSync(filePath)) {
+          fs.unlinkSync(filePath);
+        }
+      });
+      // Удаляем все записи изображений для данного объявления
       await RentalsImages.destroy({ where: { rentalId: id } });
-      // Вставляем новые записи согласно обновлённому порядку (если массив не пуст)
+      // Если передан не пустой массив, сохраняем новые записи в том порядке, который передан клиентом
       if (updatedImages.length > 0) {
         const newImages = updatedImages.map(item => ({
           rentalId: rental.id,
@@ -194,7 +211,7 @@ const updateRental = async (req, res) => {
           return res.status(400).json({ message: 'Неверный формат customData', error: parseError });
         }
       }
-      // Удаляем старые кастомные данные и вставляем новые
+      // Удаляем старые данные и создаем новые
       await RentalCustomData.destroy({ where: { rentalId: id } });
       if (Array.isArray(customData)) {
         const customDataRecords = customData.map(item => ({
