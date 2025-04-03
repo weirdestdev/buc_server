@@ -54,4 +54,37 @@ const upload = multer({ storage });
  */
 router.post('/', upload.single('file'), docsController.uploadDoc);
 
+/**
+ * @swagger
+ * /docs:
+ *   get:
+ *     summary: Get document content
+ *     description: Returns the content of a TXT document by its type (terms, privacy, or cookie).
+ *     parameters:
+ *       - in: query
+ *         name: docType
+ *         type: string
+ *         required: true
+ *         description: Document type. Allowed values: "terms", "privacy", "cookie".
+ *     responses:
+ *       200:
+ *         description: Document content retrieved successfully.
+ *         schema:
+ *           type: object
+ *           properties:
+ *             docType:
+ *               type: string
+ *             content:
+ *               type: string
+ *             path:
+ *               type: string
+ *       400:
+ *         description: Bad request. Invalid docType.
+ *       404:
+ *         description: Document not found.
+ *       500:
+ *         description: Server error.
+ */
+router.get('/', docsController.getDoc);
+
 module.exports = router;
