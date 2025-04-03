@@ -182,5 +182,6 @@ module.exports = {
     RentalsImages,
     RentTime,
     RentalCustomData,
-    Docs
+    Docs,
+    MemberRequest
 };
