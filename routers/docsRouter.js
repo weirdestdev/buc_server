@@ -18,7 +18,40 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage });
 
-// Эндпоинт для загрузки документа
+/**
+ * @swagger
+ * /docs:
+ *   post:
+ *     summary: Upload a document file
+ *     description: Uploads a TXT document file for a given document type (terms, privacy, or cookie) and saves it.
+ *     consumes:
+ *       - multipart/form-data
+ *     parameters:
+ *       - in: formData
+ *         name: docType
+ *         type: string
+ *         required: true
+ *         description: Document type. Allowed values: "terms", "privacy", "cookie".
+ *       - in: formData
+ *         name: file
+ *         type: file
+ *         required: true
+ *         description: The TXT file to upload.
+ *     responses:
+ *       200:
+ *         description: Document saved successfully.
+ *         schema:
+ *           type: object
+ *           properties:
+ *             message:
+ *               type: string
+ *             doc:
+ *               type: object
+ *       400:
+ *         description: Bad request. Invalid docType or missing file.
+ *       500:
+ *         description: Server error.
+ */
 router.post('/', upload.single('file'), docsController.uploadDoc);
 
 module.exports = router;
