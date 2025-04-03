@@ -1,4 +1,4 @@
-const MemberRequest = require('../models/memberRequest'); // Убедитесь, что путь корректный
+const MemberRequest = require('../models/models'); // Убедитесь, что путь корректный
 
 // Контроллер для создания запроса пользователя
 exports.createRequest = async (req, res) => {
