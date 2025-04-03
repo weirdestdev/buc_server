@@ -64,6 +64,20 @@ const RentTime = sequelize.define('rent_time', {
     name: { type: DataTypes.STRING, allowNull: false }
 });
 
+const Docs = sequelize.define('docs', {
+    id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+    docType: {
+      type: DataTypes.ENUM('terms', 'privacy', 'cookie'),
+      allowNull: false,
+      unique: true,
+    },
+    path: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+  });
+  
+
 // Изменили поле status на 3 категории: our portfolio, leisure, rentals
 const Rentals = sequelize.define('rentals', {
     id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
@@ -130,4 +144,5 @@ module.exports = {
     RentalsImages,
     RentTime,
     RentalCustomData,
+    Docs
 };
