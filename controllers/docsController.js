@@ -1,4 +1,4 @@
-const Docs = require('../models/models');
+const { Docs } = require('../models/models');
 const fs = require('fs').promises;
 
 // Контроллер для загрузки документа
