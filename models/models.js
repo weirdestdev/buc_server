@@ -30,6 +30,41 @@ const User = sequelize.define('user', {
     },
 });
 
+const MemberRequest = sequelize.define('member_request', {
+    id: {
+        type: DataTypes.INTEGER,
+        primaryKey: true,
+        autoIncrement: true
+    },
+    // Если запрос привязан к пользователю, можно добавить userId
+    // userId: { 
+    //   type: DataTypes.INTEGER, 
+    //   allowNull: false 
+    // },
+    memberName: {
+        type: DataTypes.STRING,
+        allowNull: false
+    },
+    email: {
+        type: DataTypes.STRING,
+        allowNull: false
+    },
+    message: {
+        type: DataTypes.STRING(200),
+        allowNull: false
+    },
+    status: {
+        type: DataTypes.ENUM('new', 'viewed', 'completed'),
+        allowNull: false,
+        defaultValue: 'new',
+    },
+}, {
+    // Используем стандартные timestamp поля createdAt и updatedAt
+    timestamps: true,
+});
+
+
+
 const CategoriesData = sequelize.define('categories_data', {
     id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
     name: { type: DataTypes.STRING, allowNull: false },
@@ -67,16 +102,16 @@ const RentTime = sequelize.define('rent_time', {
 const Docs = sequelize.define('docs', {
     id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
     docType: {
-      type: DataTypes.ENUM('terms', 'privacy', 'cookie'),
-      allowNull: false,
-      unique: true,
+        type: DataTypes.ENUM('terms', 'privacy', 'cookie'),
+        allowNull: false,
+        unique: true,
     },
     path: {
-      type: DataTypes.STRING,
-      allowNull: false,
+        type: DataTypes.STRING,
+        allowNull: false,
     },
-  });
-  
+});
+
 
 // Изменили поле status на 3 категории: our portfolio, leisure, rentals
 const Rentals = sequelize.define('rentals', {
@@ -135,6 +170,9 @@ RentalCustomData.belongsTo(Rentals, { foreignKey: 'rentalId' });
 
 CategoriesData.hasMany(RentalCustomData, { foreignKey: 'categoriesDataId', onDelete: 'CASCADE' });
 RentalCustomData.belongsTo(CategoriesData, { foreignKey: 'categoriesDataId' });
+
+User.hasMany(MemberRequest, { foreignKey: 'userId', onDelete: 'CASCADE' });
+MemberRequest.belongsTo(User, { foreignKey: 'userId' });
 
 module.exports = {
     User,
