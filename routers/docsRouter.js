@@ -31,7 +31,6 @@ const upload = multer({ storage });
  *         name: docType
  *         type: string
  *         required: true
- *         description: Document type. Allowed values: "terms", "privacy", "cookie".
  *       - in: formData
  *         name: file
  *         type: file
@@ -65,7 +64,6 @@ router.post('/', upload.single('file'), docsController.uploadDoc);
  *         name: docType
  *         type: string
  *         required: true
- *         description: Document type. Allowed values: "terms", "privacy", "cookie".
  *     responses:
  *       200:
  *         description: Document content retrieved successfully.
