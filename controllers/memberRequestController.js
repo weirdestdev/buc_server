@@ -3,11 +3,12 @@ const { MemberRequest } = require('../models/models'); // Убедитесь, ч
 // Контроллер для создания запроса пользователя
 exports.createRequest = async (req, res) => {
   try {
-    const { memberName, email, message } = req.body;
+    // Извлекаем поле rentalName вместе с другими
+    const { memberName, rentalName, email, message } = req.body;
     
     // Проверка обязательных полей
-    if (!memberName || !email || !message) {
-      return res.status(400).json({ error: 'Missing required fields: memberName, email, and message are required.' });
+    if (!memberName || !rentalName || !email || !message) {
+      return res.status(400).json({ error: 'Missing required fields: memberName, rentalName, email, and message are required.' });
     }
     
     // Проверка ограничения по длине сообщения
@@ -18,6 +19,7 @@ exports.createRequest = async (req, res) => {
     // Создаем новый запрос с дефолтным статусом "new"
     const request = await MemberRequest.create({
       memberName,
+      rentalName,  // Передаем имя объявления
       email,
       message,
       status: 'new',

@@ -36,14 +36,13 @@ const MemberRequest = sequelize.define('member_request', {
         primaryKey: true,
         autoIncrement: true
     },
-    // Если запрос привязан к пользователю, можно добавить userId
-    // userId: { 
-    //   type: DataTypes.INTEGER, 
-    //   allowNull: false 
-    // },
     memberName: {
         type: DataTypes.STRING,
         allowNull: false
+    },
+    rentalName: {
+        type: DataTypes.STRING,
+        allowNull: true
     },
     email: {
         type: DataTypes.STRING,
@@ -62,8 +61,6 @@ const MemberRequest = sequelize.define('member_request', {
     // Используем стандартные timestamp поля createdAt и updatedAt
     timestamps: true,
 });
-
-
 
 const CategoriesData = sequelize.define('categories_data', {
     id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
