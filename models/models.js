@@ -42,7 +42,7 @@ const MemberRequest = sequelize.define('member_request', {
     },
     rentalName: {
         type: DataTypes.STRING,
-        allowNull: true
+        allowNull: false
     },
     email: {
         type: DataTypes.STRING,
