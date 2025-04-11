@@ -127,7 +127,8 @@ const Rentals = sequelize.define('rentals', {
         type: DataTypes.BOOLEAN,
         allowNull: false,
         defaultValue: false,
-    }
+    },
+    pdfLink: { type: DataTypes.STRING, allowNull: true },
 });
 
 // Новая модель для хранения значений кастомных полей, введённых для каждого объявления
