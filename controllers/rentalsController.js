@@ -98,7 +98,7 @@ const createRental = async (req, res) => {
       categoryId,
       rentTimeId
     } = req.body;
-    
+
     // Формируем объект данных для создания объявления.
     const rentalData = {
       name,
@@ -112,9 +112,9 @@ const createRental = async (req, res) => {
       rentTimeId: rentTimeId && rentTimeId !== "null" ? rentTimeId : null,
       pdfLink: null // Изначально поле pdfLink пустое
     };
-    
+
     const rental = await Rentals.create(rentalData);
-    
+
     // Обработка изображений – без изменений.
     if (req.files && req.files.images && req.files.images.length > 0) {
       const rentalImages = req.files.images.map(file => {
@@ -123,7 +123,7 @@ const createRental = async (req, res) => {
       });
       await RentalsImages.bulkCreate(rentalImages);
     }
-    
+
     // Обработка PDF-файла.
     if (req.files && req.files.pdf && req.files.pdf.length > 0) {
       const pdfFile = req.files.pdf[0];
@@ -131,7 +131,7 @@ const createRental = async (req, res) => {
       const inputPath = pdfFile.path; // Multer сохраняет временный файл
       const outputFilename = pdfFile.filename; // Можно добавить префикс/слаг по необходимости
       const outputPath = path.join(__dirname, '..', 'static', 'pdf', outputFilename);
-      
+
       // Сжимаем PDF и после успешного сжатия сохраняем ссылку в базе.
       compressPDF(inputPath, outputPath, async (err) => {
         if (err) {
@@ -147,7 +147,7 @@ const createRental = async (req, res) => {
         await rental.save();
       });
     }
-    
+
     if (req.body.customData) {
       let customData = req.body.customData;
       if (typeof customData === 'string') {
@@ -157,7 +157,7 @@ const createRental = async (req, res) => {
           return res.status(400).json({ message: 'Неверный формат customData', error: parseError });
         }
       }
-      
+
       if (Array.isArray(customData)) {
         const customDataRecords = customData.map(item => ({
           rentalId: rental.id,
@@ -167,7 +167,7 @@ const createRental = async (req, res) => {
         await RentalCustomData.bulkCreate(customDataRecords);
       }
     }
-    
+
     res.status(201).json(rental);
   } catch (error) {
     res.status(500).json({ message: 'Ошибка при создании объявления', error });
@@ -261,14 +261,21 @@ const updateRental = async (req, res) => {
       const inputPath = pdfFile.path;
       const outputFilename = pdfFile.filename;
       const outputPath = path.join(__dirname, '..', 'static', 'pdf', outputFilename);
-      compressPDF(inputPath, outputPath, async (err) => {
-        if (err) {
-          console.error('Ошибка при сжатии PDF:', err);
-          return res.status(500).json({ message: 'Ошибка при сжатии PDF', err });
-        }
-        fs.unlinkSync(inputPath);
-        rental.pdfLink = `https://api.businessunit.club/static/pdf/${outputFilename}`;
-        await rental.save();
+
+      // Оборачиваем compressPDF в Promise, чтобы можно было использовать await.
+      await new Promise((resolve, reject) => {
+        compressPDF(inputPath, outputPath, async (err) => {
+          if (err) {
+            console.error('Ошибка при сжатии PDF:', err);
+            return reject(err);
+          }
+          // Удаляем исходный (несжатый) файл.
+          fs.unlinkSync(inputPath);
+          // Обновляем поле pdfLink с формированием URL.
+          rental.pdfLink = `https://api.businessunit.club/static/pdf/${outputFilename}`;
+          await rental.save();
+          resolve();
+        });
       });
     }
 
