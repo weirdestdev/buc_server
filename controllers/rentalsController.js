@@ -1,5 +1,18 @@
 const { Rentals, RentalsImages, RentTime, Categories, RentalCustomData, CategoriesData } = require('../models/models');
 const path = require('path');
+const fs = require('fs');
+const { exec } = require('child_process');
+
+// Функция для сжатия PDF-файла через Ghostscript.
+// Параметры: inputPath – исходный файл, outputPath – сжатый файл.
+const compressPDF = (inputPath, outputPath, callback) => {
+  // Параметры Ghostscript для сжатия PDF (настройте по необходимости)
+  const gsCommand = `gs -sDEVICE=pdfwrite -dCompatibilityLevel=1.4 -dPDFSETTINGS=/ebook -dNOPAUSE -dQUIET -dBATCH -sOutputFile="${outputPath}" "${inputPath}"`;
+  exec(gsCommand, (error, stdout, stderr) => {
+    if (error) return callback(error);
+    callback(null);
+  });
+};
 
 // *************************** RentTime методы *************************** //
 
@@ -69,12 +82,8 @@ const deleteRentTime = async (req, res) => {
 
 /**
  * Создание нового объявления.
- * Ожидается, что в теле запроса придут поля:
- * name, description, address, price, unit_of_numeration, status, featured,
- * categoryId, rentTimeId, а также (опционально) customData для кастомных полей,
- * и файлы (images).
- *
- * Обратите внимание: теперь status должен быть одним из: "our portfolio", "leisure", "rentals".
+ * Поля в теле запроса: name, description, address, price, unit_of_numeration, status, featured,
+ * categoryId, rentTimeId, (опционально) customData, изображения (images) и PDF-файл (pdf).
  */
 const createRental = async (req, res) => {
   try {
@@ -91,7 +100,6 @@ const createRental = async (req, res) => {
     } = req.body;
     
     // Формируем объект данных для создания объявления.
-    // Если rentTimeId не передан или равен "null", устанавливаем его как null.
     const rentalData = {
       name,
       description,
@@ -101,18 +109,43 @@ const createRental = async (req, res) => {
       status,
       featured,
       categoryId,
-      rentTimeId: rentTimeId && rentTimeId !== "null" ? rentTimeId : null
+      rentTimeId: rentTimeId && rentTimeId !== "null" ? rentTimeId : null,
+      pdfLink: null // Изначально поле pdfLink пустое
     };
     
     const rental = await Rentals.create(rentalData);
     
-    // Обработка изображений, кастомных полей и прочего остается без изменений...
-    if (req.files && req.files.length > 0) {
-      const rentalImages = req.files.map(file => {
+    // Обработка изображений – без изменений.
+    if (req.files && req.files.images && req.files.images.length > 0) {
+      const rentalImages = req.files.images.map(file => {
         const imageUrl = `${req.protocol}://${req.get('host')}/static/${file.filename}`;
         return { rentalId: rental.id, image: imageUrl };
       });
       await RentalsImages.bulkCreate(rentalImages);
+    }
+    
+    // Обработка PDF-файла.
+    if (req.files && req.files.pdf && req.files.pdf.length > 0) {
+      const pdfFile = req.files.pdf[0];
+      // Пути к исходному файлу и к сжатому файлу
+      const inputPath = pdfFile.path; // Multer сохраняет временный файл
+      const outputFilename = pdfFile.filename; // Можно добавить префикс/слаг по необходимости
+      const outputPath = path.join(__dirname, '..', 'static', 'pdf', outputFilename);
+      
+      // Сжимаем PDF и после успешного сжатия сохраняем ссылку в базе.
+      compressPDF(inputPath, outputPath, async (err) => {
+        if (err) {
+          console.error('Ошибка при сжатии PDF:', err);
+          // В случае ошибки можно либо отправить ответ об ошибке, либо продолжить с оригинальным файлом.
+          // Здесь отправляем ошибку.
+          return res.status(500).json({ message: 'Ошибка при сжатии PDF', err });
+        }
+        // Удаляем исходный (несжатый) файл
+        fs.unlinkSync(inputPath);
+        // Обновляем поле pdfLink с формированием URL
+        rental.pdfLink = `https://api.businessunit.club/static/pdf/${outputFilename}`;
+        await rental.save();
+      });
     }
     
     if (req.body.customData) {
@@ -143,8 +176,8 @@ const createRental = async (req, res) => {
 
 /**
  * Обновление объявления по ID.
- * При обновлении можно передавать новые данные, новый массив изображений и новые значения кастомных полей.
- * Если кастомные данные переданы, старые записи удаляются и заменяются новыми.
+ * Можно обновлять данные, изображения, кастомные поля и PDF-файл.
+ * При обновлении PDF: если передан новый файл, старый (если есть) удаляется.
  */
 const updateRental = async (req, res) => {
   try {
@@ -167,9 +200,8 @@ const updateRental = async (req, res) => {
     rental.rentTimeId = rentTimeId || rental.rentTimeId;
     await rental.save();
 
-    // Если загружены новые файлы – приоритет их обработки
-    if (req.files && req.files.length > 0) {
-      // Удаляем старые записи и файлы
+    // Если загружены новые изображения – удаляем старые и добавляем новые
+    if (req.files && req.files.images && req.files.images.length > 0) {
       const currentImages = await RentalsImages.findAll({ where: { rentalId: id } });
       currentImages.forEach(img => {
         try {
@@ -178,27 +210,23 @@ const updateRental = async (req, res) => {
             fs.unlinkSync(filePath);
           }
         } catch (err) {
-          console.error('Ошибка при удалении файла', err);
+          console.error('Ошибка при удалении файла изображения', err);
         }
       });
       await RentalsImages.destroy({ where: { rentalId: id } });
-      // Добавляем новые изображения
-      const rentalImages = req.files.map(file => ({
+      const rentalImages = req.files.images.map(file => ({
         rentalId: rental.id,
         image: `${req.protocol}://${req.get('host')}/static/${file.filename}`
       }));
       await RentalsImages.bulkCreate(rentalImages);
     } else if (req.body.updatedImages) {
-      // Обработка обновленного порядка миниатюр
       let updatedImages;
       try {
         updatedImages = JSON.parse(req.body.updatedImages);
       } catch (parseError) {
         return res.status(400).json({ message: 'Неверный формат updatedImages', error: parseError });
       }
-      // Получаем текущие записи изображений
       const currentImages = await RentalsImages.findAll({ where: { rentalId: id } });
-      // Удаляем файлы из папки static (обрабатываем ошибки)
       currentImages.forEach(img => {
         try {
           const filePath = path.join(__dirname, '..', 'static', path.basename(img.image));
@@ -206,12 +234,10 @@ const updateRental = async (req, res) => {
             fs.unlinkSync(filePath);
           }
         } catch (err) {
-          console.error('Ошибка при удалении файла', err);
+          console.error('Ошибка при удалении файла изображения', err);
         }
       });
-      // Удаляем все записи изображений для данного объявления
       await RentalsImages.destroy({ where: { rentalId: id } });
-      // Вставляем новые записи согласно переданному порядку
       if (updatedImages.length > 0) {
         const newImages = updatedImages.map(item => ({
           rentalId: rental.id,
@@ -219,6 +245,31 @@ const updateRental = async (req, res) => {
         }));
         await RentalsImages.bulkCreate(newImages);
       }
+    }
+
+    // Обработка обновления PDF-файла.
+    if (req.files && req.files.pdf && req.files.pdf.length > 0) {
+      // Удаляем старый PDF, если он существует.
+      if (rental.pdfLink) {
+        const oldPdfFileName = path.basename(rental.pdfLink);
+        const oldPdfFilePath = path.join(__dirname, '..', 'static', 'pdf', oldPdfFileName);
+        if (fs.existsSync(oldPdfFilePath)) {
+          fs.unlinkSync(oldPdfFilePath);
+        }
+      }
+      const pdfFile = req.files.pdf[0];
+      const inputPath = pdfFile.path;
+      const outputFilename = pdfFile.filename;
+      const outputPath = path.join(__dirname, '..', 'static', 'pdf', outputFilename);
+      compressPDF(inputPath, outputPath, async (err) => {
+        if (err) {
+          console.error('Ошибка при сжатии PDF:', err);
+          return res.status(500).json({ message: 'Ошибка при сжатии PDF', err });
+        }
+        fs.unlinkSync(inputPath);
+        rental.pdfLink = `https://api.businessunit.club/static/pdf/${outputFilename}`;
+        await rental.save();
+      });
     }
 
     // Обработка кастомных данных
@@ -249,9 +300,9 @@ const updateRental = async (req, res) => {
   }
 };
 
-
 /**
  * Удаление объявления по ID.
+ * Если у объявления есть PDF-файл, он также будет удалён из папки static/pdf.
  */
 const deleteRental = async (req, res) => {
   try {
@@ -260,6 +311,15 @@ const deleteRental = async (req, res) => {
     if (!rental) {
       return res.status(404).json({ message: 'Объявление не найдено' });
     }
+    // Удаляем PDF, если он имеется
+    if (rental.pdfLink) {
+      const pdfFilename = path.basename(rental.pdfLink);
+      const pdfFilePath = path.join(__dirname, '..', 'static', 'pdf', pdfFilename);
+      if (fs.existsSync(pdfFilePath)) {
+        fs.unlinkSync(pdfFilePath);
+      }
+    }
+    // Можно также добавить удаление связанных изображений и кастомных данных, если они не удаляются каскадно.
     await rental.destroy();
     res.status(200).json({ message: 'Объявление успешно удалено' });
   } catch (error) {
@@ -268,7 +328,7 @@ const deleteRental = async (req, res) => {
 };
 
 /**
- * Получение всех объявлений с включенными изображениями, временем аренды, категорией и кастомными полями.
+ * Получение всех объявлений с включёнными изображениями, временем аренды, категорией и кастомными полями.
  */
 const getAllRentals = async (req, res) => {
   try {
@@ -290,7 +350,7 @@ const getAllRentals = async (req, res) => {
 };
 
 /**
- * Получение только избранных объявлений (featured = true) с включенными данными.
+ * Получение избранных объявлений.
  */
 const getFeaturedRentals = async (req, res) => {
   try {
@@ -313,7 +373,7 @@ const getFeaturedRentals = async (req, res) => {
 };
 
 /**
- * Получение объявлений по ID категории с включенными данными.
+ * Получение объявлений по ID категории.
  */
 const getRentalsByCategory = async (req, res) => {
   try {
@@ -337,7 +397,7 @@ const getRentalsByCategory = async (req, res) => {
 };
 
 /**
- * Получение объявлений по статусу с включенными данными.
+ * Получение объявлений по статусу.
  */
 const getRentalsByStatus = async (req, res) => {
   try {
