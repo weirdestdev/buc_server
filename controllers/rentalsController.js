@@ -2,16 +2,22 @@ const { Rentals, RentalsImages, RentTime, Categories, RentalCustomData, Categori
 const path = require('path');
 const fs = require('fs');
 const { exec } = require('child_process');
+const HummusRecipe = require('hummus-recipe');
 
 // Функция для сжатия PDF-файла через Ghostscript.
 // Параметры: inputPath – исходный файл, outputPath – сжатый файл.
 const compressPDF = (inputPath, outputPath, callback) => {
-  // Параметры Ghostscript для сжатия PDF (настройте по необходимости)
-  const gsCommand = `gs -sDEVICE=pdfwrite -dCompatibilityLevel=1.4 -dPDFSETTINGS=/ebook -dNOPAUSE -dQUIET -dBATCH -sOutputFile="${outputPath}" "${inputPath}"`;
-  exec(gsCommand, (error, stdout, stderr) => {
-    if (error) return callback(error);
-    callback(null);
-  });
+  try {
+    // Открываем исходный PDF и создаём новый PDF с опцией сжатия
+    const pdfDoc = new HummusRecipe(inputPath, outputPath, { compress: true });
+    pdfDoc
+      // Если требуется можно открыть и обработать каждую страницу, здесь просто пересохраняем
+      .endPDF(() => {
+        callback(null);
+      });
+  } catch (error) {
+    callback(error);
+  }
 };
 
 // *************************** RentTime методы *************************** //
