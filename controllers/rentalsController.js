@@ -215,10 +215,11 @@ const updateRental = async (req, res) => {
       if (updatedImages.length > 0) {
         const newImages = updatedImages.map(item => ({
           rentalId: rental.id,
-          image: item.image
+          image: item.image,
+          order: item.order  // Обязательно добавляем поле order
         }));
         await RentalsImages.bulkCreate(newImages);
-      }
+      }      
     }
 
     // Обработка кастомных данных
@@ -281,7 +282,8 @@ const getAllRentals = async (req, res) => {
           model: RentalCustomData,
           include: [{ model: CategoriesData }]
         }
-      ]
+      ],
+      order: [[RentalsImages, 'order', 'ASC']]
     });
     res.status(200).json(rentals);
   } catch (error) {

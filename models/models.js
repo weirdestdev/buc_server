@@ -88,7 +88,12 @@ const Categories = sequelize.define('categories', {
 
 const RentalsImages = sequelize.define('rentals_images', {
     id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
-    image: { type: DataTypes.STRING, allowNull: false }
+    image: { type: DataTypes.STRING, allowNull: false },
+    order: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        defaultValue: 0
+    }
 });
 
 const RentTime = sequelize.define('rent_time', {
