@@ -78,7 +78,8 @@ class UserWorkController {
   
       return res.json({ users, totalCount });
     } catch (error) {
-      next(error);
+      // Возвращаем статус 500 и текст ошибки в ответе
+      return res.status(500).json({ message: error.message });
     }
   }
   
