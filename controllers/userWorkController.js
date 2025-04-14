@@ -40,12 +40,12 @@ class UserWorkController {
 
   async getAllUsers(req, res, next) {
     const { page = 1, limit = 10, searchQuery = '', category = '' } = req.query; // получаем page, limit, searchQuery и category из query params
-  
+
     try {
       // Преобразуем page и limit в числа
       const pageNumber = parseInt(page, 10);
       const limitNumber = parseInt(limit, 10);
-  
+
       // Формируем базовое условие для поиска по запросу
       let whereCondition = {};
       if (searchQuery) {
@@ -57,32 +57,41 @@ class UserWorkController {
           ],
         };
       }
-  
-      // Если передана категория (например, pending, approved, blocked) — добавляем условие фильтрации по статусу
+
+      // Если передана категория – проверяем, что значение входит в допустимые enum'ы
       if (category) {
+        // Список допустимых значений для поля status
+        const allowedStatuses = ['pending', 'approved', 'blocked'];
+
+        // Если переданное значение не входит в список, возвращаем ошибку
+        if (!allowedStatuses.includes(category)) {
+          return res.status(400).json({ message: `Invalid status value: "${category}"` });
+        }
+
         whereCondition = {
           ...whereCondition,
           status: category,
         };
       }
-  
+
       // Получаем пользователей с пагинацией и фильтрами
       const users = await User.findAll({
         where: whereCondition,
         limit: limitNumber,
         offset: (pageNumber - 1) * limitNumber,
       });
-  
+
       // Получаем общее количество пользователей с учетом фильтрации
       const totalCount = await User.count({ where: whereCondition });
-  
+
       return res.json({ users, totalCount });
     } catch (error) {
       // Возвращаем статус 500 и текст ошибки в ответе
       return res.status(500).json({ message: error.message });
     }
   }
-  
+
+
   // Одобрение пользователя (установка статуса approved)
   async approveUser(req, res) {
     try {
