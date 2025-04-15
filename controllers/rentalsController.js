@@ -1,5 +1,6 @@
 const { Rentals, RentalsImages, RentTime, Categories, RentalCustomData, CategoriesData } = require('../models/models');
 const path = require('path');
+const fs = require('fs');
 
 // *************************** RentTime методы *************************** //
 
@@ -71,10 +72,11 @@ const deleteRentTime = async (req, res) => {
  * Создание нового объявления.
  * Ожидается, что в теле запроса придут поля:
  * name, description, address, price, unit_of_numeration, status, featured,
- * categoryId, rentTimeId, а также (опционально) customData для кастомных полей,
- * и файлы (images).
+ * categoryId, rentTimeId, а также (опционально) customData для кастомных полей.
  *
- * Обратите внимание: теперь status должен быть одним из: "our portfolio", "leisure", "rentals".
+ * Кроме того, через Multer должны быть загружены:
+ * - изображения (поле "images")
+ * - PDF файл (поле "pdf")
  */
 const createRental = async (req, res) => {
   try {
@@ -91,7 +93,6 @@ const createRental = async (req, res) => {
     } = req.body;
     
     // Формируем объект данных для создания объявления.
-    // Если rentTimeId не передан или равен "null", устанавливаем его как null.
     const rentalData = {
       name,
       description,
@@ -106,15 +107,31 @@ const createRental = async (req, res) => {
     
     const rental = await Rentals.create(rentalData);
     
-    // Обработка изображений, кастомных полей и прочего остается без изменений...
-    if (req.files && req.files.length > 0) {
-      const rentalImages = req.files.map(file => {
+    // Обработка изображений (ожидается, что они передаются в req.files.images)
+    if (req.files && req.files.images && req.files.images.length > 0) {
+      const rentalImages = req.files.images.map(file => {
         const imageUrl = `${req.protocol}://${req.get('host')}/static/${file.filename}`;
         return { rentalId: rental.id, image: imageUrl };
       });
       await RentalsImages.bulkCreate(rentalImages);
     }
     
+    // Обработка PDF файла (поле "pdf")
+    if (req.files && req.files.pdf && req.files.pdf.length > 0) {
+      const pdfFile = req.files.pdf[0];
+      const pdfFileName = `${Date.now()}-${pdfFile.originalname}`;
+      const pdfDestination = path.join(__dirname, '..', 'static', 'pdf', pdfFileName);
+      
+      // Перемещаем загруженный файл из временной директории в /static/pdf
+      fs.renameSync(pdfFile.path, pdfDestination);
+      
+      // Формируем ссылку вида:
+      // https://api.businessunit.club/static/pdf/имя_файла.pdf
+      rental.pdfLink = `https://api.businessunit.club/static/pdf/${pdfFileName}`;
+      await rental.save();
+    }
+    
+    // Обработка кастомных данных (customData)
     if (req.body.customData) {
       let customData = req.body.customData;
       if (typeof customData === 'string') {
@@ -143,8 +160,8 @@ const createRental = async (req, res) => {
 
 /**
  * Обновление объявления по ID.
- * При обновлении можно передавать новые данные, новый массив изображений и новые значения кастомных полей.
- * Если кастомные данные переданы, старые записи удаляются и заменяются новыми.
+ * Можно передавать новые данные, новые изображения, новый PDF файл и новые кастомные данные.
+ * Если PDF файл загружается вновь, старый файл удаляется.
  */
 const updateRental = async (req, res) => {
   try {
@@ -167,9 +184,9 @@ const updateRental = async (req, res) => {
     rental.rentTimeId = rentTimeId || rental.rentTimeId;
     await rental.save();
 
-    // Если загружены новые файлы – приоритет их обработки
-    if (req.files && req.files.length > 0) {
-      // Удаляем старые записи и файлы
+    // Обработка обновления изображений, если загружены новые (поле "images")
+    if (req.files && req.files.images && req.files.images.length > 0) {
+      // Удаляем старые изображения
       const currentImages = await RentalsImages.findAll({ where: { rentalId: id } });
       currentImages.forEach(img => {
         try {
@@ -178,27 +195,25 @@ const updateRental = async (req, res) => {
             fs.unlinkSync(filePath);
           }
         } catch (err) {
-          console.error('Ошибка при удалении файла', err);
+          console.error('Ошибка при удалении файла изображения', err);
         }
       });
       await RentalsImages.destroy({ where: { rentalId: id } });
       // Добавляем новые изображения
-      const rentalImages = req.files.map(file => ({
+      const rentalImages = req.files.images.map(file => ({
         rentalId: rental.id,
         image: `${req.protocol}://${req.get('host')}/static/${file.filename}`
       }));
       await RentalsImages.bulkCreate(rentalImages);
     } else if (req.body.updatedImages) {
-      // Обработка обновленного порядка миниатюр
+      // Обработка обновленного порядка изображений (updatedImages)
       let updatedImages;
       try {
         updatedImages = JSON.parse(req.body.updatedImages);
       } catch (parseError) {
         return res.status(400).json({ message: 'Неверный формат updatedImages', error: parseError });
       }
-      // Получаем текущие записи изображений
       const currentImages = await RentalsImages.findAll({ where: { rentalId: id } });
-      // Удаляем файлы из папки static (обрабатываем ошибки)
       currentImages.forEach(img => {
         try {
           const filePath = path.join(__dirname, '..', 'static', path.basename(img.image));
@@ -206,23 +221,39 @@ const updateRental = async (req, res) => {
             fs.unlinkSync(filePath);
           }
         } catch (err) {
-          console.error('Ошибка при удалении файла', err);
+          console.error('Ошибка при удалении файла изображения', err);
         }
       });
-      // Удаляем все записи изображений для данного объявления
       await RentalsImages.destroy({ where: { rentalId: id } });
-      // Вставляем новые записи согласно переданному порядку
       if (updatedImages.length > 0) {
         const newImages = updatedImages.map(item => ({
           rentalId: rental.id,
           image: item.image,
-          order: item.order  // Обязательно добавляем поле order
+          order: item.order
         }));
         await RentalsImages.bulkCreate(newImages);
       }      
     }
 
-    // Обработка кастомных данных
+    // Обработка обновления PDF файла (поле "pdf")
+    if (req.files && req.files.pdf && req.files.pdf.length > 0) {
+      // Если ранее был PDF файл, удаляем его
+      if (rental.pdfLink) {
+        const oldFileName = path.basename(rental.pdfLink);
+        const oldFilePath = path.join(__dirname, '..', 'static', 'pdf', oldFileName);
+        if (fs.existsSync(oldFilePath)) {
+          fs.unlinkSync(oldFilePath);
+        }
+      }
+      const pdfFile = req.files.pdf[0];
+      const pdfFileName = `${Date.now()}-${pdfFile.originalname}`;
+      const pdfDestination = path.join(__dirname, '..', 'static', 'pdf', pdfFileName);
+      fs.renameSync(pdfFile.path, pdfDestination);
+      rental.pdfLink = `https://api.businessunit.club/static/pdf/${pdfFileName}`;
+      await rental.save();
+    }
+
+    // Обработка кастомных данных (customData)
     if (req.body.customData) {
       let customData = req.body.customData;
       if (typeof customData === 'string') {
@@ -250,7 +281,6 @@ const updateRental = async (req, res) => {
   }
 };
 
-
 /**
  * Удаление объявления по ID.
  */
@@ -261,6 +291,16 @@ const deleteRental = async (req, res) => {
     if (!rental) {
       return res.status(404).json({ message: 'Объявление не найдено' });
     }
+    
+    // Удаляем PDF файл, если он есть
+    if (rental.pdfLink) {
+      const pdfFileName = path.basename(rental.pdfLink);
+      const pdfFilePath = path.join(__dirname, '..', 'static', 'pdf', pdfFileName);
+      if (fs.existsSync(pdfFilePath)) {
+        fs.unlinkSync(pdfFilePath);
+      }
+    }
+    
     await rental.destroy();
     res.status(200).json({ message: 'Объявление успешно удалено' });
   } catch (error) {
@@ -269,7 +309,7 @@ const deleteRental = async (req, res) => {
 };
 
 /**
- * Получение всех объявлений с включенными изображениями, временем аренды, категорией и кастомными полями.
+ * Получение всех объявлений с включенными изображениями, временем аренды, категорией и кастомными данными.
  */
 const getAllRentals = async (req, res) => {
   try {

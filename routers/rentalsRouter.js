@@ -6,14 +6,15 @@ const multer = require('multer');
 const rentalsController = require('../controllers/rentalsController');
 const authMiddleware = require('../middleware/AuthMiddleware');
 
-// Настройка хранилища multer
+// Настройка хранилища multer.
+// Все файлы будут сохранены в папке static (внутри неё для PDF - отдельная подпапка, куда мы перемещаем файлы).
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    // Папка для сохранения файлов (относительный путь от корня проекта)
+    // Временно сохраняем файлы в папке static
     cb(null, path.join(__dirname, '..', 'static'));
   },
   filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
     cb(null, uniqueSuffix + '-' + file.originalname);
   }
 });
@@ -293,6 +294,10 @@ router.get('/status/:status', rentalsController.getRentalsByStatus);
  *                 items:
  *                   type: string
  *                   format: binary
+ *               pdf:
+ *                 type: string
+ *                 format: binary
+ *                 description: PDF-файл для объявления
  *     responses:
  *       200:
  *         description: Объявление успешно обновлено
@@ -303,7 +308,10 @@ router.get('/status/:status', rentalsController.getRentalsByStatus);
  *       500:
  *         description: Внутренняя ошибка сервера
  */
-router.put('/:id', upload.array('images'), rentalsController.updateRental);
+router.put('/:id', upload.fields([
+  { name: 'images', maxCount: 10 },
+  { name: 'pdf', maxCount: 1 }
+]), rentalsController.updateRental);
 
 /**
  * @swagger
@@ -387,6 +395,10 @@ router.delete('/:id', rentalsController.deleteRental);
  *                 items:
  *                   type: string
  *                   format: binary
+ *               pdf:
+ *                 type: string
+ *                 format: binary
+ *                 description: PDF-файл для объявления
  *     responses:
  *       201:
  *         description: Объявление успешно создано
@@ -395,6 +407,9 @@ router.delete('/:id', rentalsController.deleteRental);
  *       500:
  *         description: Внутренняя ошибка сервера
  */
-router.post('/', upload.array('images'), rentalsController.createRental);
+router.post('/', upload.fields([
+  { name: 'images', maxCount: 10 },
+  { name: 'pdf', maxCount: 1 }
+]), rentalsController.createRental);
 
 module.exports = router;
