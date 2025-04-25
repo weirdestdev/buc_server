@@ -206,33 +206,27 @@ const updateRental = async (req, res) => {
       }));
       await RentalsImages.bulkCreate(rentalImages);
     } else if (req.body.updatedImages) {
-      // Обработка обновленного порядка изображений (updatedImages)
-      let updatedImages;
+      let updatedImages = [];
       try {
         updatedImages = JSON.parse(req.body.updatedImages);
       } catch (parseError) {
         return res.status(400).json({ message: 'Неверный формат updatedImages', error: parseError });
       }
-      const currentImages = await RentalsImages.findAll({ where: { rentalId: id } });
-      currentImages.forEach(img => {
-        try {
+      // удаляем/пересоздаём только если реально есть новые данные
+      if (Array.isArray(updatedImages) && updatedImages.length > 0) {
+        const currentImages = await RentalsImages.findAll({ where: { rentalId: id } });
+        for (let img of currentImages) {
           const filePath = path.join(__dirname, '..', 'static', path.basename(img.image));
-          if (fs.existsSync(filePath)) {
-            fs.unlinkSync(filePath);
-          }
-        } catch (err) {
-          console.error('Ошибка при удалении файла изображения', err);
+          if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
         }
-      });
-      await RentalsImages.destroy({ where: { rentalId: id } });
-      if (updatedImages.length > 0) {
+        await RentalsImages.destroy({ where: { rentalId: id } });
         const newImages = updatedImages.map(item => ({
           rentalId: rental.id,
           image: item.image,
           order: item.order
         }));
         await RentalsImages.bulkCreate(newImages);
-      }      
+      }
     }
 
     // Обработка обновления PDF файла (поле "pdf")
