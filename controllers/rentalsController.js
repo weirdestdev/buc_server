@@ -206,26 +206,23 @@ const updateRental = async (req, res) => {
       }));
       await RentalsImages.bulkCreate(rentalImages);
     } else if (req.body.updatedImages) {
-      let updatedImages = [];
+      // Парсим входящий массив updatedImages — ожидаем [{ id, order }, …]
+      let updatedImages;
       try {
         updatedImages = JSON.parse(req.body.updatedImages);
       } catch (parseError) {
         return res.status(400).json({ message: 'Неверный формат updatedImages', error: parseError });
       }
-      // удаляем/пересоздаём только если реально есть новые данные
+      
       if (Array.isArray(updatedImages) && updatedImages.length > 0) {
-        const currentImages = await RentalsImages.findAll({ where: { rentalId: id } });
-        for (let img of currentImages) {
-          const filePath = path.join(__dirname, '..', 'static', path.basename(img.image));
-          if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-        }
-        await RentalsImages.destroy({ where: { rentalId: id } });
-        const newImages = updatedImages.map(item => ({
-          rentalId: rental.id,
-          image: item.image,
-          order: item.order
+        // Пробегаем по каждому элементу и обновляем только поле order
+        await Promise.all(updatedImages.map(img => {
+          // img.id — это id записи в RentalsImages; img.order — новый порядок
+          return RentalsImages.update(
+            { order: img.order },
+            { where: { id: img.id } }
+          );
         }));
-        await RentalsImages.bulkCreate(newImages);
       }
     }
 
