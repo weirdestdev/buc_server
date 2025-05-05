@@ -309,7 +309,7 @@ router.get('/status/:status', rentalsController.getRentalsByStatus);
  *         description: Внутренняя ошибка сервера
  */
 router.put('/:id', upload.fields([
-  { name: 'images', maxCount: 10 },
+  { name: 'images', maxCount: 15 },
   { name: 'pdf', maxCount: 1 }
 ]), rentalsController.updateRental);
 
@@ -408,7 +408,7 @@ router.delete('/:id', rentalsController.deleteRental);
  *         description: Внутренняя ошибка сервера
  */
 router.post('/', upload.fields([
-  { name: 'images', maxCount: 10 },
+  { name: 'images', maxCount: 15 },
   { name: 'pdf', maxCount: 1 }
 ]), rentalsController.createRental);
 

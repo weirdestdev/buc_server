@@ -108,22 +108,12 @@ const createRental = async (req, res) => {
     const rental = await Rentals.create(rentalData);
     
     // Обработка изображений (ожидается, что они передаются в req.files.images)
-    if (req.files?.images?.length) {
-      const rentalImages = req.files.images.map((file, idx) => ({
-        rentalId: rental.id,
-        image: `${req.protocol}://${req.get('host')}/static/${file.filename}`,
-        order: idx + 1           // задаём порядок явно, чтобы не полагаться на defaultValue
-      }));
-      try {
-        await RentalsImages.bulkCreate(rentalImages);
-      } catch (err) {
-        console.error('=== Ошибка при bulkCreate RentalsImages ===');
-        console.error('Массив для вставки:', rentalImages);
-        console.error(err.name, err.message);
-        console.error(err.errors || err);  // если это ValidationError, тут будут детали
-        // пробросим дальше, чтобы клиент получил 500
-        throw err;
-      }
+    if (req.files && req.files.images && req.files.images.length > 0) {
+      const rentalImages = req.files.images.map(file => {
+        const imageUrl = `${req.protocol}://${req.get('host')}/static/${file.filename}`;
+        return { rentalId: rental.id, image: imageUrl };
+      });
+      await RentalsImages.bulkCreate(rentalImages);
     }
     
     // Обработка PDF файла (поле "pdf")
