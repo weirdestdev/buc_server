@@ -306,16 +306,19 @@ const getAllRentals = async (req, res) => {
   try {
     const rentals = await Rentals.findAll({
       include: [
-        { model: RentalsImages },
-        { model: RentTime },
-        { model: Categories },
+        {
+          model: RentalsImages,
+          separate: true,
+          order: [['order', 'ASC']]
+        },
+        RentTime,
+        Categories,
         {
           model: RentalCustomData,
-          include: [{ model: CategoriesData }]
+          include: [ CategoriesData ]
         }
-      ],
-      order: [[RentalsImages, 'order', 'ASC']]
-    });
+      ]
+    });    
     res.status(200).json(rentals);
   } catch (error) {
     res.status(500).json({ message: 'Ошибка при получении объявлений', error });
@@ -330,12 +333,16 @@ const getFeaturedRentals = async (req, res) => {
     const rentals = await Rentals.findAll({
       where: { featured: true },
       include: [
-        { model: RentalsImages },
-        { model: RentTime },
-        { model: Categories },
+        {
+          model: RentalsImages,
+          separate: true,
+          order: [['order', 'ASC']]
+        },
+        RentTime,
+        Categories,
         {
           model: RentalCustomData,
-          include: [{ model: CategoriesData }]
+          include: [ CategoriesData ]
         }
       ]
     });
@@ -354,12 +361,16 @@ const getRentalsByCategory = async (req, res) => {
     const rentals = await Rentals.findAll({
       where: { categoryId },
       include: [
-        { model: RentalsImages },
-        { model: RentTime },
-        { model: Categories },
+        {
+          model: RentalsImages,
+          separate: true,
+          order: [['order', 'ASC']]
+        },
+        RentTime,
+        Categories,
         {
           model: RentalCustomData,
-          include: [{ model: CategoriesData }]
+          include: [ CategoriesData ]
         }
       ]
     });
