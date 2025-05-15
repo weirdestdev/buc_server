@@ -412,4 +412,33 @@ router.post('/', upload.fields([
   { name: 'pdf', maxCount: 1 }
 ]), rentalsController.createRental);
 
+/**
+ * @swagger
+ * /rentals/images/{id}:
+ *   delete:
+ *     summary: Удаление изображения по ID
+ *     tags: [Rentals]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         example: 10
+ *     responses:
+ *       200:
+ *         description: Изображение успешно удалено
+ *       404:
+ *         description: Изображение не найдено
+ *       500:
+ *         description: Внутренняя ошибка сервера
+ */
+router.delete(
+  '/images/:id',
+  authMiddleware,
+  rentalsController.deleteRentalImage
+);
+
 module.exports = router;

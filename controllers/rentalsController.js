@@ -404,6 +404,34 @@ const getRentalsByStatus = async (req, res) => {
   }
 };
 
+/**
+ * Удаление изображения по ID.
+ */
+const deleteRentalImage = async (req, res) => {
+  try {
+    const { id } = req.params;
+    // Ищем запись в БД
+    const image = await RentalsImages.findByPk(id);
+    if (!image) {
+      return res.status(404).json({ message: 'Изображение не найдено' });
+    }
+
+    // Удаляем файл с диска
+    const fileName = path.basename(image.image);
+    const filePath = path.join(__dirname, '..', 'static', fileName);
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+    }
+
+    // Удаляем запись из БД
+    await image.destroy();
+    res.status(200).json({ message: 'Изображение успешно удалено' });
+  } catch (error) {
+    console.error('Ошибка при удалении изображения:', error);
+    res.status(500).json({ message: 'Ошибка при удалении изображения', error });
+  }
+};
+
 module.exports = {
   // RentTime методы
   addRentTime,
@@ -411,7 +439,7 @@ module.exports = {
   getRentTime,
   updateRentTime,
   deleteRentTime,
-  // Rentals методы
+  deleteRentalImage,
   createRental,
   updateRental,
   deleteRental,
