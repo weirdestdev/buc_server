@@ -166,13 +166,23 @@ const createRental = async (req, res) => {
 const updateRental = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, description, address, price, unit_of_numeration, status, featured, categoryId, rentTimeId } = req.body;
+    const {
+      name,
+      description,
+      address,
+      price,
+      unit_of_numeration,
+      status,
+      featured,
+      categoryId,
+      rentTimeId
+    } = req.body;
     const rental = await Rentals.findByPk(id);
     if (!rental) {
       return res.status(404).json({ message: 'Объявление не найдено' });
     }
 
-    // Обновляем основные поля объявления
+    // Обновляем основные поля
     rental.name = name || rental.name;
     rental.description = description || rental.description;
     rental.address = address || rental.address;
@@ -184,84 +194,64 @@ const updateRental = async (req, res) => {
     rental.rentTimeId = rentTimeId || rental.rentTimeId;
     await rental.save();
 
-    // Обработка обновления изображений, если загружены новые (поле "images")
-    if (req.files && req.files.images && req.files.images.length > 0) {
-      // Удаляем старые изображения
-      const currentImages = await RentalsImages.findAll({ where: { rentalId: id } });
-      currentImages.forEach(img => {
-        try {
-          const filePath = path.join(__dirname, '..', 'static', path.basename(img.image));
-          if (fs.existsSync(filePath)) {
-            fs.unlinkSync(filePath);
-          }
-        } catch (err) {
-          console.error('Ошибка при удалении файла изображения', err);
-        }
-      });
-      await RentalsImages.destroy({ where: { rentalId: id } });
-      // Добавляем новые изображения
-      const rentalImages = req.files.images.map(file => ({
-        rentalId: rental.id,
-        image: `${req.protocol}://${req.get('host')}/static/${file.filename}`
-      }));
-      await RentalsImages.bulkCreate(rentalImages);
-    } else if (req.body.updatedImages) {
-      // Парсим входящий массив updatedImages — ожидаем [{ id, order }, …]
+    // Сначала — обработка порядка уже существующих картинок
+    if (req.body.updatedImages) {
       let updatedImages;
       try {
         updatedImages = JSON.parse(req.body.updatedImages);
       } catch (parseError) {
         return res.status(400).json({ message: 'Неверный формат updatedImages', error: parseError });
       }
-      
-      if (Array.isArray(updatedImages) && updatedImages.length > 0) {
-        // Пробегаем по каждому элементу и обновляем только поле order
-        await Promise.all(updatedImages.map(img => {
-          // img.id — это id записи в RentalsImages; img.order — новый порядок
-          return RentalsImages.update(
-            { order: img.order },
-            { where: { id: img.id } }
-          );
-        }));
-      }
+      await Promise.all(updatedImages.map(img =>
+        RentalsImages.update(
+          { order: img.order },
+          { where: { id: img.id } }
+        )
+      ));
     }
 
-    // Обработка обновления PDF файла (поле "pdf")
+    // Затем — дозаливаем новые файлы, если они есть
+    if (req.files && req.files.images && req.files.images.length > 0) {
+      const newImages = req.files.images.map(file => ({
+        rentalId: rental.id,
+        image: `${req.protocol}://${req.get('host')}/static/${file.filename}`
+      }));
+      await RentalsImages.bulkCreate(newImages);
+    }
+
+    // Обновление PDF
     if (req.files && req.files.pdf && req.files.pdf.length > 0) {
-      // Если ранее был PDF файл, удаляем его
       if (rental.pdfLink) {
-        const oldFileName = path.basename(rental.pdfLink);
-        const oldFilePath = path.join(__dirname, '..', 'static', 'pdf', oldFileName);
-        if (fs.existsSync(oldFilePath)) {
-          fs.unlinkSync(oldFilePath);
-        }
+        const oldFile = path.basename(rental.pdfLink);
+        const oldPath = path.join(__dirname, '..', 'static', 'pdf', oldFile);
+        if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
       }
       const pdfFile = req.files.pdf[0];
-      const pdfFileName = `${Date.now()}-${pdfFile.originalname}`;
-      const pdfDestination = path.join(__dirname, '..', 'static', 'pdf', pdfFileName);
-      fs.renameSync(pdfFile.path, pdfDestination);
-      rental.pdfLink = `https://api.businessunit.club/static/pdf/${pdfFileName}`;
+      const pdfName = `${Date.now()}-${pdfFile.originalname}`;
+      const dest = path.join(__dirname, '..', 'static', 'pdf', pdfName);
+      fs.renameSync(pdfFile.path, dest);
+      rental.pdfLink = `${req.protocol}://${req.get('host')}/static/pdf/${pdfName}`;
       await rental.save();
     }
 
-    // Обработка кастомных данных (customData)
+    // Обновление customData
     if (req.body.customData) {
       let customData = req.body.customData;
       if (typeof customData === 'string') {
         try {
           customData = JSON.parse(customData);
-        } catch (parseError) {
-          return res.status(400).json({ message: 'Неверный формат customData', error: parseError });
+        } catch (e) {
+          return res.status(400).json({ message: 'Неверный формат customData', error: e });
         }
       }
       await RentalCustomData.destroy({ where: { rentalId: id } });
       if (Array.isArray(customData)) {
-        const customDataRecords = customData.map(item => ({
-          rentalId: rental.id,
+        const records = customData.map(item => ({
+          rentalId: id,
           categoriesDataId: item.categoriesDataId,
           value: item.value
         }));
-        await RentalCustomData.bulkCreate(customDataRecords);
+        await RentalCustomData.bulkCreate(records);
       }
     }
 
